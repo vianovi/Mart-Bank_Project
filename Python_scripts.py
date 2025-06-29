@@ -388,11 +388,11 @@ def dapatkan_konfigurasi() -> dict:
         # Merge data yang didapat dari DB dengan struktur default untuk memastikan
         # semua field ada, bahkan jika field baru ditambahkan di versi kode mendatang.
         merged_config = {
-           "id": SYSTEM_CONFIG_ID, # Pastikan ID-nya benar, bahkan jika data DB corrupt
-           "nama_toko": "Bear Mart", # Nilai default fallback jika field 'nama_toko' hilang di DB
-           "kategori_produk": KATEGORI_PRODUK_DEFAULT.copy(), # Nilai default fallback
-           "admin_dibuat": False, # Nilai default fallback
-           "setup_selesai": False # Nilai default fallback
+            "id": SYSTEM_CONFIG_ID, # Pastikan ID-nya benar, bahkan jika data DB corrupt
+            "nama_toko": "Bear Mart", # Nilai default fallback jika field 'nama_toko' hilang di DB
+            "kategori_produk": KATEGORI_PRODUK_DEFAULT.copy(), # Nilai default fallback
+            "admin_dibuat": False, # Nilai default fallback
+            "setup_selesai": False # Nilai default fallback
         }
         # Perbarui dictionary merged_config dengan data yang ditemukan di DB
         merged_config.update(config_data)
@@ -402,22 +402,22 @@ def dapatkan_konfigurasi() -> dict:
 
 
 def simpan_konfigurasi(config_data: dict):
-   """Menyimpan atau memperbarui konfigurasi sistem di TinyDB menggunakan upsert pada ID konstan."""
-   # Perbaikan: Gunakan upsert berdasarkan ID konstan SYSTEM_CONFIG_ID.
-   # Pastikan dictionary yang akan disimpan memiliki field 'id' dengan nilai SYSTEM_CONFIG_ID.
-   if "id" not in config_data or config_data["id"] != SYSTEM_CONFIG_ID:
+    """Menyimpan atau memperbarui konfigurasi sistem di TinyDB menggunakan upsert pada ID konstan."""
+    # Perbaikan: Gunakan upsert berdasarkan ID konstan SYSTEM_CONFIG_ID.
+    # Pastikan dictionary yang akan disimpan memiliki field 'id' dengan nilai SYSTEM_CONFIG_ID.
+    if "id" not in config_data or config_data["id"] != SYSTEM_CONFIG_ID:
         # Jika ID hilang atau salah, tambahkan/perbaiki sebelum menyimpan
         config_data["id"] = SYSTEM_CONFIG_ID
         logger.warning(f"Configuration data missing or incorrect ID ({config_data.get('id', 'None')}) before saving. Assigned {SYSTEM_CONFIG_ID}.")
 
-   try:
-       # Menggunakan upsert: perbarui dokumen yang memiliki 'id' sama dengan SYSTEM_CONFIG_ID jika ada,
-       # atau masukkan sebagai dokumen baru jika tidak ada. Ini menjamin hanya ada satu dokumen konfigurasi utama.
-       db.table('konfigurasi').upsert(config_data, KonfigurasiQuery.id == SYSTEM_CONFIG_ID)
-       # logger.debug("Configuration saved successfully.") # Log ini terlalu sering, nonaktifkan
-   except Exception as e:
-       # Tangani error saat menyimpan konfigurasi
-       logger.error(f"Error saving configuration using upsert: {e}")
+    try:
+        # Menggunakan upsert: perbarui dokumen yang memiliki 'id' sama dengan SYSTEM_CONFIG_ID jika ada,
+        # atau masukkan sebagai dokumen baru jika tidak ada. Ini menjamin hanya ada satu dokumen konfigurasi utama.
+        db.table('konfigurasi').upsert(config_data, KonfigurasiQuery.id == SYSTEM_CONFIG_ID)
+        # logger.debug("Configuration saved successfully.") # Log ini terlalu sering, nonaktifkan
+    except Exception as e:
+        # Tangani error saat menyimpan konfigurasi
+        logger.error(f"Error saving configuration using upsert: {e}")
 # >>> Akhir Perbaikan Fungsi Konfigurasi Sistem <<<
 
 
@@ -435,10 +435,16 @@ def buat_admin_default_jika_perlu(konfigurasi: dict): # Menerima dictionary konf
     """Membuat akun admin default jika belum ada di database pengguna."""
     # Cek apakah ada pengguna dengan username admin default dan peran ADMIN di tabel 'pengguna'
     # Menggunakan kueri kombinasi dengan objek Query
+    # Di dalam fungsi buat_admin_default_jika_perlu:
+
+# Cek apakah ada pengguna dengan username admin default DAN peran ADMIN di tabel 'pengguna'
     admin_exists = db.table('pengguna').get(
+        # >>> PERBAIKAN DI SINI: LENGKAPI EKSPRESI & KONDISI KEDUA <<<
         (PenggunaQuery.username.lower() == ADMIN_USERNAME_DEFAULT.lower()) &
         (PenggunaQuery.peran == PERAN_ADMIN)
+        # >>> ----------------------------------------------------- <<<
     )
+    pass
 
     # Jika admin default tidak ditemukan di database
     if not admin_exists:
@@ -520,36 +526,32 @@ def inisialisasi_database_jika_perlu():
         ]
         for p_data in produk_contoh:
             try:
-                 # Membuat objek Produk menggunakan Pydantic Model
-                 # ID akan dibuat otomatis oleh Field(default_factory)
-                 produk_baru = Produk(
+                # Membuat objek Produk menggunakan Pydantic Model
+                # ID akan dibuat otomatis oleh Field(default_factory)
+                produk_baru = Produk(
                     nama=p_data['nama'],
                     harga=Money(p_data['harga'], IDR), # Menggunakan objek Money
                     stok=p_data['stok'],
                     kategori=p_data['kategori'],
                     deskripsi=p_data['deskripsi']
-                 )
-                 simpan_produk(produk_baru) # Menyimpan objek produk baru ke TinyDB (menggunakan upsert)
+                )
+                simpan_produk(produk_baru) # Menyimpan objek produk baru ke TinyDB (menggunakan upsert)
             except ValidationError as e:
                 logger.error(f"Gagal membuat model produk contoh '{p_data['nama']}' karena validasi Pydantic: {e}")
             except Exception as e:
-                 logger.error(f"Error tak terduga saat menambahkan produk contoh '{p_data['nama']}': {e}")
+                logger.error(f"Error tak terduga saat menambahkan produk contoh '{p_data['nama']}': {e}")
 
 
         # Simpan kategori produk default ke dalam konfigurasi jika belum ada atau kosong.
         if not konfigurasi.get("kategori_produk"):
-             konfigurasi["kategori_produk"] = KATEGORI_PRODUK_DEFAULT.copy()
-             logger.info("Adding default product categories to config.")
+            konfigurasi["kategori_produk"] = KATEGORI_PRODUK_DEFAULT.copy()
+            logger.info("Adding default product categories to config.")
 
         # Tandai bahwa proses setup awal telah selesai di dictionary konfigurasi
         konfigurasi["setup_selesai"] = True
         # Perbaikan: Simpan dictionary konfigurasi yang sudah lengkap dan final (termasuk flag setup_selesai=True) ke TinyDB
         simpan_konfigurasi(konfigurasi) # Menggunakan fungsi simpan_konfigurasi yang sudah diperbaiki
         logger.info("Database initialization complete.")
-
-    # ... (bagian lain dari Blok 4 jika ada) ...
-    # >>> AKHIR BLOK 4 <<<
-
 
 # ==============================================================================
 # === BLOK 5: FUNGSI UTILITAS UMUM ===
@@ -595,11 +597,11 @@ def input_valid(prompt, tipe_data=str, validasi_regex=None, pesan_error_regex=No
                 import getpass
                 # Menggunakan getpass untuk input tanpa echo
                 try:
-                     nilai_input_str = getpass.getpass(prompt)
+                    nilai_input_str = getpass.getpass(prompt)
                 except Exception as e:
-                     # Fallback ke input biasa jika getpass gagal (misal di beberapa IDE)
-                     logger.warning(f"Gagal menggunakan getpass: {e}. Menggunakan input biasa (tidak disembunyikan).")
-                     nilai_input_str = input(prompt) # Fallback
+                    # Fallback ke input biasa jika getpass gagal (misal di beberapa IDE)
+                    logger.warning(f"Gagal menggunakan getpass: {e}. Menggunakan input biasa (tidak disembunyikan).")
+                    nilai_input_str = input(prompt) # Fallback
             else:
                 # Input biasa
                 nilai_input_str = input(prompt)
@@ -719,7 +721,7 @@ def registrasi_pengguna_baru():
     email = email_input_str if email_input_str.strip() else None # Set None jika input kosong/spasi
     # Validasi format email jika email_baru bukan None
     if email and not re.fullmatch(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$", email):
-         print("Format email tidak valid. Email tidak disimpan."); email = None # Buang email jika format salah
+        print("Format email tidak valid. Email tidak disimpan."); email = None # Buang email jika format salah
 
     try:
         # Membuat hash password dan PIN menggunakan Passlib
@@ -2422,7 +2424,7 @@ def jalankan_program():
                 print("\nSilakan login atau registrasi untuk berbelanja."); input_enter_lanjut()
             elif pilihan == 4:
                 # Memilih opsi keluar dari program
-                print("Terima kasih telah menggunakan layanan Bear Mart & Bank. Sampai jumpa!");
+                print("Terima kasih telah menggunakan layanan Bear Mart & Bank. Sampai jumpa!")
                 logger.info("Program dihentikan oleh pengguna."); # Mencatat di log
                 time.sleep(1); # Memberikan jeda singkat sebelum keluar
                 bersihkan_layar(); # Membersihkan layar sebelum program berakhir
