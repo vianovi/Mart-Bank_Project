@@ -13,7 +13,7 @@ from typing import List, Optional, Annotated # Digunakan untuk type hinting
 
 # --- Import Library Eksternal Baru ---
 # Pydantic untuk definisi model data, validasi, dan serialisasi
-from pydantic import BaseModel, Field, EmailStr, ValidationError, ConfigDict, PlainSerializer
+from pydantic import BaseModel, Field, EmailStr, ValidationError, ConfigDict, PlainSerializer, BeforeValidator
 # TinyDB sebagai database NoSQL berbasis JSON
 from tinydb import TinyDB, Query
 # Passlib untuk hashing password dan PIN dengan aman (menggunakan bcrypt)
@@ -26,8 +26,8 @@ from moneyed import Money, IDR # Mengimpor kelas Money dan mata uang IDR (Rupiah
 
 # --- Konfigurasi Path Folder & File ---
 # Menggunakan path penyimpanan yang Anda spesifikasikan
-FOLDER_DATABASE = "/home/vivobook14/Source_code/Python/project/database"
-FOLDER_LOG = "/home/vivobook14/Source_code/Python/project/logs"
+FOLDER_DATABASE = "/home/vivobook14/Source_code/Repository/Mart_Bank_Project/database"
+FOLDER_LOG = "/home/vivobook14/Source_code/Repository/Mart_Bank_Project/logs"
 
 # Pastikan folder penyimpanan ada; dibuat jika belum ada
 os.makedirs(FOLDER_DATABASE, exist_ok=True)
@@ -54,7 +54,6 @@ logger.add(
     format="{time:YYYY-MM-DD HH:mm:ss} - {message}", # Format output log sesuai permintaan
     encoding='utf-8'      # Menggunakan encoding UTF-8 untuk mendukung karakter non-ASCII
 )
-# logger.info("Loguru logger initialized.") # Baris log opsional untuk verifikasi setup logger
 
 # --- Setup Hashing Password dan PIN (Passlib) ---
 # Membuat context untuk hashing; menggunakan algoritma bcrypt yang kuat
@@ -94,6 +93,18 @@ KATEGORI_PRODUK_DEFAULT = ["Makanan Ringan", "Minuman", "Kebutuhan Pokok", "Perl
 SYSTEM_CONFIG_ID = "system_main_config" # ID unik yang akan selalu digunakan untuk dokumen konfigurasi utama
 # >>> ------------------------------------------------------------- <<<
 
+# === TAMBAHKAN FUNGSI INI ===
+# Helper untuk Validator objek Money dengan Pydantic
+def money_validator(v) -> Money:
+    """Mengubah angka (int/float) menjadi objek Money saat data dimuat (validasi)."""
+    if isinstance(v, Money):
+        # Jika sudah merupakan objek Money, langsung kembalikan
+        return v
+    if isinstance(v, (int, float)):
+        # Jika berupa angka, buat objek Money baru
+        return Money(v, IDR)
+    # Jika tipe datanya aneh, lemparkan error
+    raise ValueError("Nilai untuk saldo harus berupa angka atau objek Money.")
 
 # --- Helper untuk Serializer Objek Money dengan Pydantic ---
 # Pydantic perlu tahu cara mengubah objek Money menjadi format yang bisa disimpan (JSON)
@@ -101,8 +112,14 @@ def money_serializer(m: Money) -> float:
     """Mengubah objek Money menjadi representasi float dari jumlahnya saat diserialisasi."""
     return float(m.amount)
 
-# Membuat alias tipe kustom; memberitahu Pydantic bahwa tipe Money perlu diserialisasi
-JsonSafeMoney = Annotated[Money, PlainSerializer(money_serializer)]
+# Membuat alias tipe kustom dua arah:
+# - BeforeValidator: Mengubah angka -> Money (saat membaca/memvalidasi)
+# - PlainSerializer: Mengubah Money -> float (saat menyimpan/output)
+JsonSafeMoney = Annotated[
+    Money,
+    BeforeValidator(money_validator),
+    PlainSerializer(money_serializer)
+]
 
 
 # ==============================================================================
@@ -234,9 +251,9 @@ class KeranjangBelanja:
             elif jumlah_baru == 0:
                 self.hapus_item(produk_id) # Hapus item jika jumlah baru 0
             else:
-                 # Jika jumlah baru negatif, cetak pesan error dan tidak melakukan apa-apa
-                 print("Jumlah tidak boleh negatif.")
-                 return False # Gagal karena jumlah negatif
+                # Jika jumlah baru negatif, cetak pesan error dan tidak melakukan apa-apa
+                print("Jumlah tidak boleh negatif.")
+                return False # Gagal karena jumlah negatif
             return True # Berhasil mengubah atau menghapus
         return False # Produk ID tidak ditemukan di keranjang
 
@@ -275,9 +292,19 @@ def dapatkan_pengguna_by_id(user_id: str) -> Optional[Pengguna]:
 
 def dapatkan_pengguna_by_username(username: str) -> Optional[Pengguna]:
     """Mengambil data pengguna dari TinyDB berdasarkan username (case-insensitive)."""
-    # Menggunakan Query pada field 'username' dan melakukan perbandingan case-insensitive
-    hasil = db.table('pengguna').get(PenggunaQuery.username.lower() == username.lower())
-    # Jika data ditemukan, buat objek Pengguna dari dictionary yang didapat
+    # --- LOGIKA BARU YANG LEBIH KUAT DAN EKSPLISIT ---
+    # Menggunakan metode .test() dengan fungsi lambda. Ini adalah cara
+    # paling 'failsafe' untuk melakukan perbandingan kustom dan menghindari
+    # masalah interpretasi pada .lower().
+    # Fungsi lambda ini akan dijalankan untuk setiap field 'username' di database.
+    # 'db_val' adalah nilai username yang tersimpan di database.
+    # Kita juga menambahkan 'isinstance(db_val, str)' untuk keamanan,
+    # memastikan kita tidak mencoba .lower() pada sesuatu yang bukan string.
+    hasil = db.table('pengguna').get(
+        PenggunaQuery.username.test(lambda db_val: isinstance(db_val, str) and db_val.lower() == username.lower())
+    )
+    # Baris di bawah ini sudah benar dan tidak perlu diubah.
+    # Ia akan membuat objek Pengguna jika 'hasil' adalah dictionary, atau mengembalikan None jika tidak ada hasil.
     return Pengguna(**hasil) if hasil else None
 
 def simpan_pengguna(pengguna: Pengguna):
@@ -437,14 +464,21 @@ def buat_admin_default_jika_perlu(konfigurasi: dict): # Menerima dictionary konf
     # Menggunakan kueri kombinasi dengan objek Query
     # Di dalam fungsi buat_admin_default_jika_perlu:
 
-# Cek apakah ada pengguna dengan username admin default DAN peran ADMIN di tabel 'pengguna'
-    admin_exists = db.table('pengguna').get(
-        # >>> PERBAIKAN DI SINI: LENGKAPI EKSPRESI & KONDISI KEDUA <<<
-        (PenggunaQuery.username.lower() == ADMIN_USERNAME_DEFAULT.lower()) &
-        (PenggunaQuery.peran == PERAN_ADMIN)
-        # >>> ----------------------------------------------------- <<<
-    )
-    pass
+    # Cek apakah ada pengguna dengan username admin default DAN peran ADMIN di tabel 'pengguna'
+
+    # === LOGIKA BARU YANG LEBIH KUAT ===
+    # 1. Cari pengguna berdasarkan username terlebih dahulu.
+    #    Fungsi ini akan mengembalikan objek Pengguna atau None.
+    calon_admin = dapatkan_pengguna_by_username(ADMIN_USERNAME_DEFAULT)
+
+    # 2. Periksa hasilnya.
+    #    Jika calon_admin ditemukan (bukan None) DAN perannya adalah ADMIN,
+    #    maka admin_exists kita anggap True. Jika tidak, maka False.
+    if calon_admin and calon_admin.peran == PERAN_ADMIN:
+        admin_exists = True
+    else:
+        admin_exists = False
+    # ======================================
 
     # Jika admin default tidak ditemukan di database
     if not admin_exists:
@@ -514,7 +548,7 @@ def inisialisasi_database_jika_perlu():
 
     # Buat Produk Contoh jika tabel 'produk' masih kosong.
     # Menggunakan count() tanpa argumen untuk memeriksa jumlah dokumen, yang seharusnya aman setelah perbaikan penanganan konfigurasi.
-    if db.table('produk').count() == 0:
+    if len(db.table('produk').all()) == 0:
         logger.info("Adding example products.")
         produk_contoh = [
             {"nama": "Susu UHT Full Cream 1L", "harga": 18500, "stok": 150, "kategori": "Minuman", "deskripsi": "Susu UHT segar berkualitas."},
