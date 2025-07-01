@@ -69,17 +69,28 @@ KonfigurasiQuery = Query()
 
 
 # --- Konstanta & Konfigurasi Lainnya ---
+
+
 PERAN_PELANGGAN = "PELANGGAN"
 PERAN_ADMIN = "ADMIN"
-
-BATAS_PERCOBAAN_LOGIN = 3
-DURASI_KUNCI_AKUN_MENIT = 5
 
 ADMIN_USERNAME_DEFAULT = "admin"
 ADMIN_PASSWORD_DEFAULT = "AdminBearMart123!"
 ADMIN_PIN_DEFAULT = "123456"
 
+BATAS_PERCOBAAN_LOGIN = 3
+DURASI_KUNCI_AKUN_MENIT = 5
+
+# ---KONSTANTA PRODUK---
 KATEGORI_PRODUK_DEFAULT = ["Makanan Ringan", "Minuman", "Kebutuhan Pokok", "Perlengkapan Mandi", "Produk Segar", "Elektronik Rumah Tangga", "Lainnya"]
+PRODUK_DEFAULT = [
+    {"nama": "Keripik Kentang Original 100g", "harga": 12000, "stok": 80, "kategori": "Makanan Ringan", "deskripsi": "Rennyah dan gurih."},
+    {"nama": "Shampoo Anti Ketombe 250ml", "harga": 28000, "stok": 60, "kategori": "Perlengkapan Mandi", "deskripsi": "Membersihkan ketombe secara efektif."},
+    {"nama": "Susu UHT Full Cream 1L", "harga": 18500, "stok": 150, "kategori": "Minuman", "deskripsi": "Susu UHT segar berkualitas."},
+    {"nama": "Beras Pandan Wangi 5kg", "harga": 75000, "stok": 40, "kategori": "Kebutuhan Pokok", "deskripsi": "Beras premium dengan aroma pandan."},
+    {"nama": "Apel Fuji per kg", "harga": 35000, "stok": 25, "kategori": "Produk Segar", "deskripsi": "Apel segar, manis dan renyah."},
+    {"nama": "Lampu LED 10W", "harga": 22000, "stok": 50, "kategori": "Elektronik Rumah Tangga", "deskripsi": "Lampu hemat energi."},
+]
 
 # ID Konstan untuk Dokumen Konfigurasi Sistem.
 # Menggunakan ID yang tetap memastikan kita selalu bisa menemukan dan memperbarui dokumen konfigurasi.
@@ -230,8 +241,8 @@ class KeranjangBelanja:
             elif jumlah_baru == 0:
                 self.hapus_item(produk_id)
             else:
-                 print("Jumlah tidak boleh negatif.")
-                 return False
+                print("Jumlah tidak boleh negatif.")
+                return False
             return True
         return False
 
@@ -311,8 +322,8 @@ def dapatkan_transaksi_bank_by_id(transaksi_id: str) -> Optional[TransaksiBank]:
     return TransaksiBank(**hasil) if hasil else None
 
 def dapatkan_semua_transaksi_bank() -> List[TransaksiBank]:
-     """Mengambil semua transaksi bank dari TinyDB."""
-     return [TransaksiBank(**t) for t in db.table('transaksi_bank').all()]
+    """Mengambil semua transaksi bank dari TinyDB."""
+    return [TransaksiBank(**t) for t in db.table('transaksi_bank').all()]
 
 
 def simpan_pesanan_toko(pesanan: PesananToko):
@@ -341,18 +352,18 @@ def dapatkan_konfigurasi() -> dict:
     if not config_docs:
         logger.info(f"System configuration not found. Creating default (ID: {SYSTEM_CONFIG_ID}).")
         default_config = {
-           "id": SYSTEM_CONFIG_ID,
-           "nama_toko": "Bear Mart",
-           "kategori_produk": KATEGORI_PRODUK_DEFAULT.copy(),
-           "admin_dibuat": False,
-           "setup_selesai": False
+            "id": SYSTEM_CONFIG_ID,
+            "nama_toko": "Bear Mart",
+            "kategori_produk": KATEGORI_PRODUK_DEFAULT.copy(),
+            "admin_dibuat": False,
+            "setup_selesai": False
         }
         try:
-             db.table('konfigurasi').truncate()
-             db.table('konfigurasi').insert(default_config.copy())
-             logger.info("Default configuration inserted into DB.")
+            db.table('konfigurasi').truncate()
+            db.table('konfigurasi').insert(default_config.copy())
+            logger.info("Default configuration inserted into DB.")
         except Exception as e:
-             logger.error(f"Failed to insert default config document: {e}")
+            logger.error(f"Failed to insert default config document: {e}")
         return default_config
 
     else:
@@ -420,55 +431,48 @@ def buat_admin_default_jika_perlu(konfigurasi: dict):
         except ValidationError as e:
             logger.error(f"Gagal membuat model admin default karena validasi Pydantic: {e}")
         except Exception as e:
-             logger.error(f"Error tak terduga saat membuat admin default: {e}")
+            logger.error(f"Error tak terduga saat membuat admin default: {e}")
     else:
-         konfigurasi["admin_dibuat"] = True
-         logger.info(f"Akun admin default '{ADMIN_USERNAME_DEFAULT}' sudah ada.")
+        konfigurasi["admin_dibuat"] = True
+        logger.info(f"Akun admin default '{ADMIN_USERNAME_DEFAULT}' sudah ada.")
     # Perubahan pada `konfigurasi` akan disimpan oleh fungsi pemanggil.
 
 
 def inisialisasi_database_jika_perlu():
     """Memeriksa apakah database perlu diinisialisasi dan menjalankan setup awal."""
     konfigurasi = dapatkan_konfigurasi()
-
     if konfigurasi.get("setup_selesai", False):
         logger.info("Database sudah diinisialisasi. Melewatkan setup.")
-        # Lakukan pengecekan keamanan jika admin terhapus secara manual.
         buat_admin_default_jika_perlu(konfigurasi)
         simpan_konfigurasi(konfigurasi)
         return
 
     logger.info("Melakukan inisialisasi awal database.")
 
-    # Buat Akun Admin Default jika belum ada.
     buat_admin_default_jika_perlu(konfigurasi)
 
     # Buat Produk Contoh jika tabel 'produk' masih kosong.
-    # Menggunakan len() pada .all() adalah cara yang benar untuk menghitung semua dokumen.
-    if len(db.table('produk').all()) == 0:
-        logger.info("Menambahkan produk contoh.")
-        produk_contoh = [
-            {"nama": "Susu UHT Full Cream 1L", "harga": 18500, "stok": 150, "kategori": "Minuman", "deskripsi": "Susu UHT segar berkualitas."},
-            {"nama": "Keripik Kentang Original 100g", "harga": 12000, "stok": 80, "kategori": "Makanan Ringan", "deskripsi": "Rennyah dan gurih."},
-            {"nama": "Shampoo Anti Ketombe 250ml", "harga": 28000, "stok": 60, "kategori": "Perlengkapan Mandi", "deskripsi": "Membersihkan ketombe secara efektif."},
-            {"nama": "Beras Pandan Wangi 5kg", "harga": 75000, "stok": 40, "kategori": "Kebutuhan Pokok", "deskripsi": "Beras premium dengan aroma pandan."},
-            {"nama": "Apel Fuji per kg", "harga": 35000, "stok": 25, "kategori": "Produk Segar", "deskripsi": "Apel segar, manis dan renyah."},
-            {"nama": "Lampu LED 10W", "harga": 22000, "stok": 50, "kategori": "Elektronik Rumah Tangga", "deskripsi": "Lampu hemat energi."},
-        ]
-        for p_data in produk_contoh:
+    # DIUBAH: Menggunakan len(db.table('produk')) untuk efisiensi
+    if len(db.table('produk')) == 0:
+        logger.info("Menambahkan produk default dari konstanta global.")
+        
+        # DIUBAH: Tidak ada lagi definisi list di sini.
+        # Loop sekarang menggunakan konstanta global 'PRODUK_DEFAULT'.
+        for p_data in PRODUK_DEFAULT:
             try:
+                # Logika di dalam loop tetap sama persis
                 produk_baru = Produk(
                     nama=p_data['nama'],
-                    harga=Money(p_data['harga'], IDR),
+                    harga=Money(p_data['harga'], IDR), # Perhatikan: Pydantic akan menangani ini jika Anda menggunakan Produk(**p_data)
                     stok=p_data['stok'],
                     kategori=p_data['kategori'],
                     deskripsi=p_data['deskripsi']
                 )
                 simpan_produk(produk_baru)
             except ValidationError as e:
-                logger.error(f"Gagal membuat model produk contoh '{p_data['nama']}': {e}")
+                logger.error(f"Gagal membuat model produk default '{p_data['nama']}': {e}")
             except Exception as e:
-                logger.error(f"Error saat menambahkan produk contoh '{p_data['nama']}': {e}")
+                logger.error(f"Error saat menambahkan produk default '{p_data['nama']}': {e}")
 
         # Simpan kategori produk default ke dalam konfigurasi.
         if not konfigurasi.get("kategori_produk"):
@@ -878,7 +882,7 @@ def transfer_dana_bank():
         print(f"\nTransfer {format_rupiah(jumlah_transfer)} ke {pengguna_tujuan.username} berhasil.")
         print(f"Saldo baru Anda: {format_rupiah(pengguna_login_saat_ini.saldo_bank)}")
     except ValueError:
-         print("Input jumlah tidak valid. Harap masukkan angka.");
+        print("Input jumlah tidak valid. Harap masukkan angka.");
     except Exception as e:
         logger.error(f"Error saat transfer dari '{pengguna_login_saat_ini.username}': {e}")
         print(f"Terjadi kesalahan saat transfer: {e}");
@@ -891,8 +895,8 @@ def lihat_riwayat_transaksi_bank():
     bersihkan_layar(); print_header(f"Riwayat Transaksi Bank - {pengguna_login_saat_ini.username}")
 
     list_transaksi_obj = [dapatkan_transaksi_bank_by_id(trx_id)
-                          for trx_id in pengguna_login_saat_ini.riwayat_transaksi_bank_ids
-                          if dapatkan_transaksi_bank_by_id(trx_id) is not None]
+                        for trx_id in pengguna_login_saat_ini.riwayat_transaksi_bank_ids
+                        if dapatkan_transaksi_bank_by_id(trx_id) is not None]
 
     if not list_transaksi_obj:
         print("Belum ada riwayat transaksi."); input_enter_lanjut(); return
@@ -990,10 +994,10 @@ def pilih_produk_dari_daftar(list_produk_ditampilkan: List[Produk]) -> Optional[
             else:
                 print(f"Nomor tidak valid. Harap pilih antara 1 dan {len(list_produk_ditampilkan)}, atau 0.")
         except ValueError:
-             print("Input tidak valid. Harap masukkan nomor produk.")
+            print("Input tidak valid. Harap masukkan nomor produk.")
         except Exception as e:
-             logger.error(f"Error saat memilih produk: {e}")
-             print(f"Terjadi kesalahan saat memproses pilihan: {e}")
+            logger.error(f"Error saat memilih produk: {e}")
+            print(f"Terjadi kesalahan saat memproses pilihan: {e}")
 
 
 def tambah_produk_ke_keranjang_toko():
@@ -1029,18 +1033,18 @@ def tambah_produk_ke_keranjang_toko():
             [print(f"{i+1}. {kat}") for i, kat in enumerate(kategori_tersedia)]
             print_separator_line()
             try:
-                 pilihan_kat_idx = input_pilihan_menu(len(kategori_tersedia), prompt_pesan="Pilih nomor kategori: ") - 1
-                 filter_kat = kategori_tersedia[pilihan_kat_idx]
-                 bersihkan_layar(); print_header(f"Produk Kategori: {filter_kat}")
-                 produk_ditampilkan = tampilkan_daftar_produk_toko(filter_kategori=filter_kat, tampilkan_deskripsi=True)
+                pilihan_kat_idx = input_pilihan_menu(len(kategori_tersedia), prompt_pesan="Pilih nomor kategori: ") - 1
+                filter_kat = kategori_tersedia[pilihan_kat_idx]
+                bersihkan_layar(); print_header(f"Produk Kategori: {filter_kat}")
+                produk_ditampilkan = tampilkan_daftar_produk_toko(filter_kategori=filter_kat, tampilkan_deskripsi=True)
             except (IndexError, Exception) as e:
-                 logger.error(f"Error saat filter produk: {e}")
-                 print(f"Terjadi kesalahan saat memfilter produk: {e}"); input_enter_lanjut(); continue
+                logger.error(f"Error saat filter produk: {e}")
+                print(f"Terjadi kesalahan saat memfilter produk: {e}"); input_enter_lanjut(); continue
         elif aksi == 4:
             return
 
         if not produk_ditampilkan:
-             input_enter_lanjut(); continue
+            input_enter_lanjut(); continue
 
         produk_dipilih = pilih_produk_dari_daftar(produk_ditampilkan)
         if not produk_dipilih:
@@ -1125,17 +1129,17 @@ def ubah_item_keranjang_toko():
                 print("Error: Produk asli tidak ditemukan."); input_enter_lanjut(); return
 
             if jumlah_baru < 0:
-                 print("Jumlah tidak boleh negatif.")
+                print("Jumlah tidak boleh negatif.")
             elif jumlah_baru > 0 and jumlah_baru > produk_asli.stok:
                 print(f"Stok produk tidak cukup (tersedia: {produk_asli.stok}).")
             else:
                 if keranjang_belanja_global.ubah_jumlah_item(item_dipilih.produk_id, jumlah_baru):
-                     if jumlah_baru == 0:
-                         logger.info(f"User '{pengguna_login_saat_ini.username}' menghapus item '{item_dipilih.nama_produk}' dari keranjang.")
-                         print(f"Item '{item_dipilih.nama_produk}' telah dihapus.")
-                     else:
-                         logger.info(f"User '{pengguna_login_saat_ini.username}' mengubah jml item '{item_dipilih.nama_produk}' menjadi {jumlah_baru}.")
-                         print(f"Jumlah '{item_dipilih.nama_produk}' telah diubah menjadi {jumlah_baru}.")
+                    if jumlah_baru == 0:
+                        logger.info(f"User '{pengguna_login_saat_ini.username}' menghapus item '{item_dipilih.nama_produk}' dari keranjang.")
+                        print(f"Item '{item_dipilih.nama_produk}' telah dihapus.")
+                    else:
+                        logger.info(f"User '{pengguna_login_saat_ini.username}' mengubah jml item '{item_dipilih.nama_produk}' menjadi {jumlah_baru}.")
+                        print(f"Jumlah '{item_dipilih.nama_produk}' telah diubah menjadi {jumlah_baru}.")
         except ValueError:
             print("Input jumlah tidak valid.")
         except Exception as e:
@@ -1182,7 +1186,7 @@ def proses_pembayaran_toko():
             produk_yang_diubah.append(produk_db)
 
         if not stok_cukup:
-             input_enter_lanjut(); return
+            input_enter_lanjut(); return
 
         print("\nMemproses pembayaran...")
         time.sleep(2)
@@ -1192,9 +1196,9 @@ def proses_pembayaran_toko():
         # Kurangi stok produk
         for item_keranjang in keranjang_belanja_global.items.values():
             for produk_obj in produk_yang_diubah:
-                 if produk_obj.id == item_keranjang.produk_id:
-                     produk_obj.stok -= item_keranjang.jumlah
-                     break
+                if produk_obj.id == item_keranjang.produk_id:
+                    produk_obj.stok -= item_keranjang.jumlah
+                    break
 
         # Kurangi saldo pengguna
         pengguna_login_saat_ini.saldo_bank -= total_bayar
@@ -1221,7 +1225,7 @@ def proses_pembayaran_toko():
         simpan_pesanan_toko(pesanan_baru)
         simpan_pengguna(pengguna_login_saat_ini)
         for prod in produk_yang_diubah:
-             simpan_produk(prod)
+            simpan_produk(prod)
 
         keranjang_belanja_global.kosongkan_keranjang()
         logger.info(f"User '{pengguna_login_saat_ini.username}' bayar {format_rupiah(total_bayar)}. Saldo: {format_rupiah(saldo_awal_pengguna)} -> {format_rupiah(pengguna_login_saat_ini.saldo_bank)}. Pesanan ID: {pesanan_baru.id}")
@@ -1258,12 +1262,12 @@ def lihat_riwayat_pembelian_toko():
         print(f"Total: {format_rupiah(pesanan.total_harga)}")
         print("Item:")
         for item_dict in pesanan.items_pesanan:
-             try:
-                 item_obj = ItemKeranjang(**item_dict)
-                 print(f"  - {item_obj.nama_produk} x{item_obj.jumlah} @ {format_rupiah(item_obj.harga_satuan)} = {format_rupiah(item_obj.subtotal)}")
-             except ValidationError as e:
-                 logger.error(f"Error validasi data item pesanan {pesanan.id}: {item_dict} - {e}")
-                 print(f"  - Error menampilkan item: {item_dict.get('nama_produk', 'N/A')}")
+            try:
+                item_obj = ItemKeranjang(**item_dict)
+                print(f"  - {item_obj.nama_produk} x{item_obj.jumlah} @ {format_rupiah(item_obj.harga_satuan)} = {format_rupiah(item_obj.subtotal)}")
+            except ValidationError as e:
+                logger.error(f"Error validasi data item pesanan {pesanan.id}: {item_dict} - {e}")
+                print(f"  - Error menampilkan item: {item_dict.get('nama_produk', 'N/A')}")
 
     print_separator_line(); input_enter_lanjut()
 
@@ -1326,8 +1330,8 @@ def admin_tambah_produk():
         logger.info(f"ADMIN: Produk '{nama}' (ID: {produk_baru.id}) ditambah oleh {pengguna_login_saat_ini.username}.")
         print(f"\nProduk '{nama}' berhasil ditambahkan.");
     except ValidationError as e:
-         logger.error(f"Gagal membuat model produk baru: {e}")
-         print(f"Gagal menambah produk: {e}")
+        logger.error(f"Gagal membuat model produk baru: {e}")
+        print(f"Gagal menambah produk: {e}")
     except Exception as e:
         logger.error(f"Error tak terduga saat menambah produk: {e}")
         print(f"Terjadi kesalahan: {e}");
@@ -1372,13 +1376,13 @@ def admin_ubah_produk():
         if pilihan_kat == len(kategori_tersedia) + 1:
             kategori_input = input_valid("Masukkan Nama Kategori Baru: ").strip()
             if kategori_input and kategori_input not in kategori_tersedia:
-                 konfigurasi = dapatkan_konfigurasi()
-                 konfigurasi["kategori_produk"].append(kategori_input)
-                 simpan_konfigurasi(konfigurasi)
-                 kategori_baru = kategori_input
-                 logger.info(f"ADMIN: Menambah kategori baru '{kategori_input}'.")
+                konfigurasi = dapatkan_konfigurasi()
+                konfigurasi["kategori_produk"].append(kategori_input)
+                simpan_konfigurasi(konfigurasi)
+                kategori_baru = kategori_input
+                logger.info(f"ADMIN: Menambah kategori baru '{kategori_input}'.")
             elif kategori_input:
-                 kategori_baru = kategori_input
+                kategori_baru = kategori_input
         else:
             kategori_baru = kategori_tersedia[pilihan_kat - 1]
 
@@ -1393,8 +1397,8 @@ def admin_ubah_produk():
         logger.info(f"ADMIN: Produk '{produk_dipilih.nama}' (ID: {produk_dipilih.id}) diubah oleh {pengguna_login_saat_ini.username}.")
         print(f"\nData produk '{produk_dipilih.nama}' berhasil diperbarui.");
     except Exception as e:
-         logger.error(f"Error saat mengubah produk: {e}")
-         print(f"Terjadi kesalahan saat mengubah produk: {e}");
+        logger.error(f"Error saat mengubah produk: {e}")
+        print(f"Terjadi kesalahan saat mengubah produk: {e}");
 
     input_enter_lanjut()
 
@@ -1421,8 +1425,8 @@ def admin_hapus_produk():
                 logger.warning(f"ADMIN: Gagal menghapus produk ID {produk_dipilih.id}, mungkin sudah dihapus.")
                 print("Gagal menghapus produk. Mungkin sudah dihapus sebelumnya.")
         except Exception as e:
-             logger.error(f"Error tak terduga saat menghapus produk ID {produk_dipilih.id}: {e}")
-             print(f"Terjadi kesalahan: {e}");
+            logger.error(f"Error tak terduga saat menghapus produk ID {produk_dipilih.id}: {e}")
+            print(f"Terjadi kesalahan: {e}");
     else:
         print("Penghapusan produk dibatalkan.")
 
@@ -1446,10 +1450,10 @@ def admin_lihat_laporan_penjualan():
     produk_terjual_count: dict[str, int] = {}
     for pesanan in semua_pesanan:
         for item_dict in pesanan.items_pesanan:
-             nama_produk = item_dict.get('nama_produk', 'Produk Tidak Dikenal')
-             jumlah_unit = item_dict.get('jumlah', 0)
-             if jumlah_unit > 0:
-                 produk_terjual_count[nama_produk] = produk_terjual_count.get(nama_produk, 0) + jumlah_unit
+            nama_produk = item_dict.get('nama_produk', 'Produk Tidak Dikenal')
+            jumlah_unit = item_dict.get('jumlah', 0)
+            if jumlah_unit > 0:
+                produk_terjual_count[nama_produk] = produk_terjual_count.get(nama_produk, 0) + jumlah_unit
 
     if produk_terjual_count:
         print("Produk Terlaris (berdasarkan unit terjual):")
@@ -1489,9 +1493,9 @@ def admin_kelola_kategori():
                 logger.info(f"ADMIN: Kategori '{nama_baru}' ditambah oleh {pengguna_login_saat_ini.username}.")
                 print(f"Kategori '{nama_baru}' berhasil ditambahkan.")
             elif nama_baru in kategori_tersedia:
-                 print("Kategori tersebut sudah ada.")
+                print("Kategori tersebut sudah ada.")
             else:
-                 print("Nama kategori tidak valid.")
+                print("Nama kategori tidak valid.")
 
         elif pilihan == 2:
             if not kategori_tersedia:
@@ -1562,8 +1566,8 @@ def admin_lihat_semua_transaksi_bank():
         u_sumber = u_sumber_obj.username if u_sumber_obj else "N/A"
         u_tujuan = "-"
         if trx.user_id_tujuan:
-             u_tujuan_obj = dapatkan_pengguna_by_id(trx.user_id_tujuan)
-             u_tujuan = u_tujuan_obj.username if u_tujuan_obj else "N/A"
+            u_tujuan_obj = dapatkan_pengguna_by_id(trx.user_id_tujuan)
+            u_tujuan = u_tujuan_obj.username if u_tujuan_obj else "N/A"
 
         print(f"{trx.timestamp.strftime('%Y-%m-%d %H:%M:%S'):<26} | {trx.jenis_transaksi:<18} | {format_rupiah(trx.jumlah):<20} | {u_sumber:<20} | {u_tujuan:<20} | {trx.keterangan[:30]:<30}")
 
@@ -1605,14 +1609,14 @@ def menu_pengaturan_akun():
                 logger.info(f"Pengguna '{target_pengguna.username}' ubah nama menjadi '{nama_lengkap_baru}'.")
                 print("Nama lengkap berhasil diperbarui.");
             else:
-                 print("Nama lengkap tidak diubah.")
+                print("Nama lengkap tidak diubah.")
 
         elif pilihan == 2:
             email_input_str = input_valid(f"Masukkan Email Baru [{target_pengguna.email or '-'}]: ", opsional=True, default_value=target_pengguna.email or "")
             email_baru = email_input_str.strip() or None
             if email_baru and not re.fullmatch(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$", email_baru):
-                 print("Format email tidak valid. Email tidak diubah.");
-                 email_baru = target_pengguna.email
+                print("Format email tidak valid. Email tidak diubah.");
+                email_baru = target_pengguna.email
 
             if email_baru != target_pengguna.email:
                 target_pengguna.email = email_baru
@@ -1620,11 +1624,11 @@ def menu_pengaturan_akun():
                 logger.info(f"Pengguna '{target_pengguna.username}' ubah email menjadi '{email_baru}'.")
                 print("Email berhasil diperbarui.");
             else:
-                 print("Email tidak diubah.")
+                print("Email tidak diubah.")
 
         elif pilihan == 3:
             if target_pengguna.pin_hash and not minta_pin_transaksi(target_pengguna, "untuk ubah password"):
-                 input_enter_lanjut(); continue
+                input_enter_lanjut(); continue
 
             password_lama = input_valid("Masukkan Password Lama: ", sembunyikan_input=True)
             if not target_pengguna.verifikasi_password(password_lama):
@@ -1645,7 +1649,7 @@ def menu_pengaturan_akun():
                 if not minta_pin_transaksi(target_pengguna, "untuk ubah PIN"):
                     input_enter_lanjut(); continue
             else:
-                 print("Anda belum memiliki PIN. Silakan buat PIN baru.")
+                print("Anda belum memiliki PIN. Silakan buat PIN baru.")
 
             pin_baru = input_valid("Masukkan PIN Bank Baru (6 digit): ", sembunyikan_input=True, validasi_regex=r"^\d{6}$", pesan_error_regex="PIN harus 6 digit angka.")
             if pin_baru != input_valid("Konfirmasi PIN Bank Baru: ", sembunyikan_input=True):
@@ -1743,9 +1747,9 @@ def menu_bank_pelanggan():
     while True:
         bersihkan_layar(); print_header("Bear Bank - Modul Perbankan")
         if pengguna_login_saat_ini:
-             print(f"Saldo Anda Saat Ini: {format_rupiah(pengguna_login_saat_ini.saldo_bank)}")
+            print(f"Saldo Anda Saat Ini: {format_rupiah(pengguna_login_saat_ini.saldo_bank)}")
         else:
-             print("Informasi Saldo: Tidak tersedia")
+            print("Informasi Saldo: Tidak tersedia")
         print_separator_line()
         print("1. Lihat Saldo Rekening")
         print("2. Deposit Saldo")
@@ -1756,8 +1760,8 @@ def menu_bank_pelanggan():
 
         pilihan = input_pilihan_menu(6)
         if not pengguna_login_saat_ini:
-             logger.error("Akses fungsi bank gagal: tidak ada pengguna login.")
-             print("Error: Anda harus login untuk mengakses fungsi Bank."); input_enter_lanjut(); continue
+            logger.error("Akses fungsi bank gagal: tidak ada pengguna login.")
+            print("Error: Anda harus login untuk mengakses fungsi Bank."); input_enter_lanjut(); continue
 
         if pilihan == 1: lihat_saldo_bank()
         elif pilihan == 2: deposit_bank()
