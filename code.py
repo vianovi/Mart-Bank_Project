@@ -111,6 +111,12 @@ def money_serializer(m: Money) -> float:
     """Mengubah objek Money menjadi representasi float saat diserialisasi."""
     return float(m.amount)
 
+def datetime_serializer(dt: datetime.datetime) -> str:
+    """Mengubah objek datetime menjadi string format 'YYYY-MM-DD HH:MM:SS'."""
+    return dt.strftime('%Y-%m-%d %H:%M:%S')
+
+
+
 # Membuat alias tipe kustom dua arah untuk Pydantic:
 # - BeforeValidator: Mengubah angka dari JSON -> objek Money (saat membaca).
 # - PlainSerializer: Mengubah objek Money -> float untuk disimpan ke JSON (saat menulis).
@@ -120,6 +126,9 @@ JsonSafeMoney = Annotated[
     PlainSerializer(money_serializer)
 ]
 
+JsonSafeDatetime = Annotated[
+    datetime.datetime, PlainSerializer(datetime_serializer)
+]
 
 # ==============================================================================
 # === BLOK 2: MODEL DATA DENGAN PYDANTIC ===
@@ -179,7 +188,7 @@ class Pengguna(BaseModel):
     riwayat_pesanan_toko_ids: List[str] = []
     gagal_login_count: int = 0
     akun_terkunci_hingga: Optional[datetime.datetime] = None
-    dibuat_pada: datetime.datetime = Field(default_factory=datetime.datetime.now)
+    dibuat_pada: JsonSafeDatetime = Field(default_factory=datetime.datetime.now)
 
     def verifikasi_password(self, password: str) -> bool:
         """Memverifikasi password menggunakan Passlib."""
@@ -202,8 +211,8 @@ class Produk(BaseModel):
     stok: int
     kategori: str
     deskripsi: str = ""
-    dibuat_pada: datetime.datetime = Field(default_factory=datetime.datetime.now)
-    diperbarui_pada: datetime.datetime = Field(default_factory=datetime.datetime.now)
+    dibuat_pada: JsonSafeDatetime = Field(default_factory=datetime.datetime.now)
+    diperbarui_pada: JsonSafeDatetime = Field(default_factory=datetime.datetime.now)
 
 # Kelas Keranjang Belanja (berbasis memori selama sesi pengguna login)
 class KeranjangBelanja:
@@ -356,7 +365,9 @@ def dapatkan_konfigurasi() -> dict:
             "nama_toko": "Bear Mart",
             "kategori_produk": KATEGORI_PRODUK_DEFAULT.copy(),
             "admin_dibuat": False,
-            "setup_selesai": False
+            "setup_selesai": False,
+            "maintenance_aktif": False,
+            "maintenance_berakhir_pada": None
         }
         try:
             db.table('konfigurasi').truncate()
@@ -374,7 +385,9 @@ def dapatkan_konfigurasi() -> dict:
             "nama_toko": "Bear Mart",
             "kategori_produk": KATEGORI_PRODUK_DEFAULT.copy(),
             "admin_dibuat": False,
-            "setup_selesai": False
+            "setup_selesai": False,
+            "maintenance_aktif": False,
+            "maintenance_berakhir_pada": None
         }
         merged_config.update(config_data)
         merged_config["id"] = SYSTEM_CONFIG_ID # Pastikan ID-nya tetap benar.
@@ -523,6 +536,29 @@ def sembunyikan_stderr():
         sys.stderr = original_stderr
         devnull.close()
 
+def cek_maintenance_dan_tampilkan_pesan():
+    """
+    Memeriksa apakah mode maintenance aktif. Jika ya, tampilkan pesan blokade.
+    Mengembalikan True jika maintenance aktif (blokir aksi), False jika tidak.
+    """
+    konfigurasi = dapatkan_konfigurasi()
+    if konfigurasi.get("maintenance_aktif", False):
+        berakhir_str = konfigurasi.get("maintenance_berakhir_pada")
+        if isinstance(berakhir_str, str):
+            try:
+                berakhir_dt = datetime.datetime.strptime(berakhir_str, '%Y-%m-%d %H:%M:%S')
+                if datetime.datetime.now() < berakhir_dt:
+                    # Maintenance aktif dan belum kedaluwarsa
+                    bersihkan_layar()
+                    print_header("Sistem Dalam Perbaikan")
+                    print("Mohon maaf, sistem sedang dalam proses maintenance.")
+                    print(f"Silakan coba lagi setelah pukul: {berakhir_dt.strftime('%H:%M:%S')}")
+                    input_enter_lanjut()
+                    return True # <-- Penting: Mengindikasikan untuk memblokir
+            except ValueError:
+                return False # Format tanggal salah, anggap tidak aktif
+    return False # <-- Maintenance tidak aktif
+
 def input_valid(prompt, tipe_data=str, validasi_regex=None, pesan_error_regex=None, sembunyikan_input=False, opsional=False, default_value=None):
     """Meminta input dari pengguna dengan validasi tipe data, regex, dan opsi tambahan."""
     while True:
@@ -577,9 +613,36 @@ def input_pilihan_menu(maks_pilihan: int, min_pilihan: int = 1, prompt_pesan: st
 
 
 def print_header(judul: str, panjang_total: int = 70):
-    """Mencetak header bergaris di konsol."""
+    """Mencetak header bergaris, dengan notifikasi maintenance real-time untuk admin."""
     print("=" * panjang_total)
     print(judul.center(panjang_total))
+
+    # --- Logika Notifikasi Maintenance Real-time untuk Admin ---
+    # Cek hanya jika ada pengguna yang login dan perannya adalah ADMIN
+    if pengguna_login_saat_ini and pengguna_login_saat_ini.peran == PERAN_ADMIN:
+        konfigurasi = dapatkan_konfigurasi()
+        
+        # Cek jika flag maintenance di konfigurasi aktif
+        if konfigurasi.get("maintenance_aktif", False):
+            berakhir_str = konfigurasi.get("maintenance_berakhir_pada")
+            if isinstance(berakhir_str, str):
+                try:
+                    berakhir_dt = datetime.datetime.strptime(berakhir_str, '%Y-%m-%d %H:%M:%S')
+                    sisa_waktu = berakhir_dt - datetime.datetime.now()
+                    
+                    # Hanya tampilkan notifikasi jika waktu maintenance belum habis
+                    if sisa_waktu.total_seconds() > 0:
+                        # Hitung sisa menit, bulatkan ke atas agar lebih intuitif
+                        menit_sisa = int(sisa_waktu.total_seconds() // 60) + 1 
+                        
+                        pesan_notif = f"MAINTENANCE AKTIF (Berakhir dalam ~{menit_sisa} menit)"
+                        print(pesan_notif.center(panjang_total))
+                        
+                except ValueError:
+                    # Jika format tanggal di DB salah, abaikan saja notifikasi
+                    pass 
+    # --------------------------------------------------------
+
     print("=" * panjang_total)
 
 def print_separator_line(panjang: int = 70, char: str = "-"):
@@ -602,6 +665,10 @@ keranjang_belanja_global = KeranjangBelanja()
 
 def registrasi_pengguna_baru():
     """Mendaftarkan pengguna baru ke dalam sistem."""
+    #  --- BLOKADE MAINTENANCE ---
+    if cek_maintenance_dan_tampilkan_pesan():
+        return  #---> Langsung keluar dari fungsi, batalkan registrasi
+    # <<<<---------->>>>
     bersihkan_layar(); print_header("Registrasi Akun Baru Bear Mart & Bank")
 
     username = input_valid("Username baru (3-20 karakter, alfanumerik & underscore): ",
@@ -661,6 +728,11 @@ def login_pengguna():
     pengguna = dapatkan_pengguna_by_username(username)
 
     if pengguna:
+        #  ----BLOKADE MAINTENANCE----
+        # Cek maintenance HANYA jika pengguna yang mencoba login adalah PELANGGAN
+        if pengguna.peran == PERAN_PELANGGAN and cek_maintenance_dan_tampilkan_pesan():
+            return # Keluar dari fungsi, batalkan login untuk pelanggan
+        #  ----<<<<>>>>>------
         if pengguna.akun_terkunci_hingga and pengguna.akun_terkunci_hingga > datetime.datetime.now():
             sisa_waktu = pengguna.akun_terkunci_hingga - datetime.datetime.now()
             sisa_waktu_str = str(sisa_waktu).split('.')[0]
@@ -1570,9 +1642,85 @@ def admin_lihat_semua_transaksi_bank():
             u_tujuan = u_tujuan_obj.username if u_tujuan_obj else "N/A"
 
         print(f"{trx.timestamp.strftime('%Y-%m-%d %H:%M:%S'):<26} | {trx.jenis_transaksi:<18} | {format_rupiah(trx.jumlah):<20} | {u_sumber:<20} | {u_tujuan:<20} | {trx.keterangan[:30]:<30}")
+    print_separator_line(150)
 
-    print_separator_line(150); input_enter_lanjut()
+def admin_kelola_maintenance():
+    """Admin: Mengaktifkan atau menonaktifkan mode maintenance sistem."""
+    bersihkan_layar()
+    print_header("Admin - Kelola Mode Maintenance")
 
+    konfigurasi = dapatkan_konfigurasi()
+    maintenance_aktif = konfigurasi.get("maintenance_aktif", False)
+    berakhir_pada_str = konfigurasi.get("maintenance_berakhir_pada")
+    berakhir_pada_dt = None
+
+    # Ubah string dari database kembali menjadi objek datetime jika ada
+    if isinstance(berakhir_pada_str, str):
+        try:
+            # Gunakan format yang sama dengan serializer kita
+            berakhir_pada_dt = datetime.datetime.strptime(berakhir_pada_str, '%Y-%m-%d %H:%M:%S')
+        except ValueError:
+            logger.warning(f"Format datetime tidak valid di 'maintenance_berakhir_pada': {berakhir_pada_str}")
+            maintenance_aktif = False # Anggap tidak aktif jika format salah
+
+    # Periksa apakah maintenance aktif dan sudah kedaluwarsa
+    if maintenance_aktif and berakhir_pada_dt and datetime.datetime.now() > berakhir_pada_dt:
+        print("Mode maintenance terdeteksi sudah berakhir. Menonaktifkan secara otomatis.")
+        logger.info("ADMIN: Mode maintenance dinonaktifkan secara otomatis karena waktu telah berakhir.")
+        konfigurasi["maintenance_aktif"] = False
+        konfigurasi["maintenance_berakhir_pada"] = None
+        simpan_konfigurasi(konfigurasi)
+        maintenance_aktif = False # Perbarui status lokal untuk sisa fungsi
+        input_enter_lanjut()
+        # Panggil fungsi lagi agar menampilkan status yang benar setelah dinonaktifkan
+        admin_kelola_maintenance() 
+        return
+
+    # --- Logika Utama ---
+    if maintenance_aktif:
+        # Jika maintenance sedang AKTIF
+        print("Status Sistem: MODE MAINTENANCE AKTIF")
+        print(f"Akses non-admin akan dibatasi hingga: {berakhir_pada_dt.strftime('%Y-%m-%d %H:%M:%S')}")
+        print_separator_line()
+        
+        if input_valid("Nonaktifkan mode maintenance sekarang? (y/n): ", default_value='n').lower() == 'y':
+            konfigurasi["maintenance_aktif"] = False
+            konfigurasi["maintenance_berakhir_pada"] = None
+            simpan_konfigurasi(konfigurasi)
+            logger.info(f"ADMIN: Mode maintenance dinonaktifkan secara manual oleh {pengguna_login_saat_ini.username}.")
+            print("\nMode maintenance telah dinonaktifkan. Sistem kembali normal.")
+        else:
+            print("\nTidak ada perubahan. Sistem tetap dalam mode maintenance.")
+
+    else:
+        # Jika maintenance sedang TIDAK AKTIF
+        print("Status Sistem: NORMAL")
+        print("Semua pengguna dapat mengakses sistem.")
+        print_separator_line()
+
+        if input_valid("Aktifkan mode maintenance? (y/n): ", default_value='n').lower() == 'y':
+            try:
+                durasi_menit = input_valid("Masukkan durasi maintenance (menit): ", tipe_data=int)
+                if durasi_menit <= 0:
+                    print("Durasi harus lebih dari 0 menit.")
+                else:
+                    waktu_berakhir = datetime.datetime.now() + datetime.timedelta(minutes=durasi_menit)
+                    
+                    konfigurasi["maintenance_aktif"] = True
+                    # Kita simpan dalam format string yang sudah kita tentukan
+                    konfigurasi["maintenance_berakhir_pada"] = waktu_berakhir.strftime('%Y-%m-%d %H:%M:%S')
+                    
+                    simpan_konfigurasi(konfigurasi)
+                    logger.info(f"ADMIN: Mode maintenance DIAKTIFKAN oleh {pengguna_login_saat_ini.username} selama {durasi_menit} menit.")
+                    print(f"\nMode maintenance berhasil diaktifkan selama {durasi_menit} menit.")
+                    print(f"Sistem akan kembali normal sekitar pukul: {waktu_berakhir.strftime('%H:%M:%S')}")
+
+            except ValueError:
+                print("Input durasi tidak valid. Harap masukkan angka.")
+        else:
+            print("\nTidak ada perubahan. Sistem tetap dalam mode normal.")
+            
+    input_enter_lanjut()
 
 # ==============================================================================
 # === BLOK 10: FUNGSI PENGATURAN AKUN ===
@@ -1675,8 +1823,26 @@ def menu_utama_non_login():
     """Menampilkan menu utama saat tidak ada pengguna yang login."""
     nama_toko = dapatkan_konfigurasi().get("nama_toko", "Bear Mart")
     bersihkan_layar(); print_header(f"Selamat Datang di {nama_toko} & Bank")
-    print("Status: Belum Login")
-    print_separator_line()
+
+    # --- TAMBAHKAN LOGIKA NOTIFIKASI INI ---
+    konfigurasi = dapatkan_konfigurasi()
+    if konfigurasi.get("maintenance_aktif", False):
+        berakhir_str = konfigurasi.get("maintenance_berakhir_pada")
+        if isinstance(berakhir_str, str):
+            try:
+                berakhir_dt = datetime.datetime.strptime(berakhir_str, '%Y-%m-%d %H:%M:%S')
+                if datetime.datetime.now() < berakhir_dt:
+                    # Tampilkan pesan besar jika maintenance aktif
+                    print_separator_line(char="!")
+                    print("!!! SISTEM DALAM MODE MAINTENANCE !!!".center(70))
+                    print(f"Layanan login & registrasi tidak tersedia.".center(70))
+                    print(f"Sistem akan kembali normal sekitar pukul {berakhir_dt.strftime('%H:%M:%S')}.".center(70))
+                    print_separator_line(char="!")
+            except ValueError:
+                pass # Abaikan jika format tanggal salah
+    # ----------------------------------------
+    
+    print("\nStatus: Belum Login")
     print("1. Login")
     print("2. Registrasi Akun Baru")
     print("3. Lihat Produk Toko (Guest Mode)")
@@ -1712,11 +1878,12 @@ def menu_utama_admin():
     print("--- Manajemen Bank & Pengguna ---")
     print("6. Lihat Semua Akun Bank")
     print("7. Lihat Semua Transaksi Bank Sistem")
-    print("8. Pengaturan Akun Admin")
+    print("8. Kelola Mode Maintenance")
+    print("9. Pengaturan Akun Admin")
     print_separator_line()
-    print("9. Logout")
+    print("10. Logout")
     print_separator_line()
-    return input_pilihan_menu(9)
+    return input_pilihan_menu(10)
 
 
 def menu_toko_pelanggan():
@@ -1782,6 +1949,7 @@ def jalankan_program():
 
     while True:
         if pengguna_login_saat_ini:
+            # --- JALUR A: PENGGUNA SUDAH LOGIN ---
             if pengguna_login_saat_ini.peran == PERAN_PELANGGAN:
                 pilihan = menu_utama_pelanggan()
                 if pilihan == 1: menu_toko_pelanggan()
@@ -1798,12 +1966,20 @@ def jalankan_program():
                 elif pilihan == 5: admin_kelola_kategori()
                 elif pilihan == 6: admin_lihat_semua_akun_bank()
                 elif pilihan == 7: admin_lihat_semua_transaksi_bank()
-                elif pilihan == 8: menu_pengaturan_akun()
-                elif pilihan == 9: logout_pengguna()
+                elif pilihan == 8: admin_kelola_maintenance()
+                elif pilihan == 9: menu_pengaturan_akun()
+                elif pilihan == 10: logout_pengguna()
+        
         else:
-            pilihan = menu_utama_non_login()
-            if pilihan == 1: login_pengguna()
-            elif pilihan == 2: registrasi_pengguna_baru()
+            # --- JALUR B: PENGGUNA BELUM LOGIN---
+            # Semua logika untuk pengguna non-login harus berada DI DALAM blok else ini.
+            
+            pilihan = menu_utama_non_login() # Pertama, panggil menu untuk dapatkan nilai 'pilihan'
+            
+            if pilihan == 1: 
+                login_pengguna()
+            elif pilihan == 2: 
+                registrasi_pengguna_baru()
             elif pilihan == 3:
                 nama_toko = dapatkan_konfigurasi().get("nama_toko", "Bear Mart")
                 bersihkan_layar(); print_header(f"Produk {nama_toko} (Guest Mode)")
@@ -1813,7 +1989,8 @@ def jalankan_program():
                 print("Terima kasih telah menggunakan layanan Bear Mart & Bank. Sampai jumpa!")
                 logger.info("Program dihentikan oleh pengguna.");
                 time.sleep(1); bersihkan_layar()
-                break
+                break # Keluar dari loop while True
+            
 
 
 # ==============================================================================

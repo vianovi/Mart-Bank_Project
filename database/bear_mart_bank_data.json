@@ -1,0 +1,130 @@
+{
+    "konfigurasi": {
+        "1": {
+            "id": "system_main_config",
+            "nama_toko": "Bear Mart",
+            "kategori_produk": [
+                "Makanan Ringan",
+                "Minuman",
+                "Kebutuhan Pokok",
+                "Perlengkapan Mandi",
+                "Produk Segar",
+                "Elektronik Rumah Tangga",
+                "Lainnya"
+            ],
+            "admin_dibuat": true,
+            "setup_selesai": true,
+            "maintenance_aktif": true,
+            "maintenance_berakhir_pada": "2025-07-01 17:14:17"
+        }
+    },
+    "pengguna": {
+        "1": {
+            "id": "929899df-42c9-41de-a130-889abc4e9f51",
+            "username": "admin",
+            "password_hash": "$2b$12$4B.kRnjRUg.rVLausEZLMegrgGtl9jCbOxKrnTWK144yKrQ2Pd8m6",
+            "pin_hash": "$2b$12$nUVbyxKXf4Vh9aXi7Lhf9ODtiAxg4kZaGmIKwbkD1jZ6ANfwDFZPW",
+            "peran": "ADMIN",
+            "nama_lengkap": "Administrator Utama",
+            "email": "admin@bearmart.system",
+            "saldo_bank": 0.0,
+            "riwayat_transaksi_bank_ids": [],
+            "riwayat_pesanan_toko_ids": [],
+            "gagal_login_count": 0,
+            "akun_terkunci_hingga": null,
+            "dibuat_pada": "2025-07-01 10:28:01"
+        },
+        "2": {
+            "id": "d64915cc-2198-43a6-bd0a-d7b6cfa4b060",
+            "username": "silvia",
+            "password_hash": "$2b$12$N6LFE6dasCsks9geHrHQZeq4cLDB9WZdRP/geT3PfkeonE0xUB24W",
+            "pin_hash": "$2b$12$Nq8.b6VP8T12md.DQfDdTueP7FEmmBOwbGlgF3hrFeEKkYraR6h.u",
+            "peran": "PELANGGAN",
+            "nama_lengkap": "Silviadewinoviana",
+            "email": "silviadewinoviana@gmail.com",
+            "saldo_bank": 0.0,
+            "riwayat_transaksi_bank_ids": [],
+            "riwayat_pesanan_toko_ids": [],
+            "gagal_login_count": 4,
+            "akun_terkunci_hingga": "2025-07-01T17:42:03.644115",
+            "dibuat_pada": "2025-07-01 17:02:36"
+        },
+        "3": {
+            "id": "f7069611-0c7e-4e63-a338-2c044da08f4c",
+            "username": "nila",
+            "password_hash": "$2b$12$sjpJLi7anJDT1T7e6Za3i.2X4mdQ39Tnw6khJQ1GFvlWth8/0pwFW",
+            "pin_hash": "$2b$12$NfrYjAw9T1qgiJusSKOFg.ZChJ/kOmioW1zbbUjbi7/aqI5ce3Tau",
+            "peran": "PELANGGAN",
+            "nama_lengkap": "nilanur",
+            "email": "nilanur2705@gmail.com",
+            "saldo_bank": 0.0,
+            "riwayat_transaksi_bank_ids": [],
+            "riwayat_pesanan_toko_ids": [],
+            "gagal_login_count": 0,
+            "akun_terkunci_hingga": null,
+            "dibuat_pada": "2025-07-01 17:39:20"
+        }
+    },
+    "produk": {
+        "1": {
+            "id": "5a01f103-49ad-422d-a1eb-4068fb65435d",
+            "nama": "Keripik Kentang Original 100g",
+            "harga": 12000.0,
+            "stok": 80,
+            "kategori": "Makanan Ringan",
+            "deskripsi": "Rennyah dan gurih.",
+            "dibuat_pada": "2025-07-01 10:28:01",
+            "diperbarui_pada": "2025-07-01 10:28:01"
+        },
+        "2": {
+            "id": "3dc29d32-7f8d-4668-af14-84854152fb3e",
+            "nama": "Shampoo Anti Ketombe 250ml",
+            "harga": 28000.0,
+            "stok": 60,
+            "kategori": "Perlengkapan Mandi",
+            "deskripsi": "Membersihkan ketombe secara efektif.",
+            "dibuat_pada": "2025-07-01 10:28:01",
+            "diperbarui_pada": "2025-07-01 10:28:01"
+        },
+        "3": {
+            "id": "6b05d50e-6023-477e-a714-caea46d296a1",
+            "nama": "Susu UHT Full Cream 1L",
+            "harga": 18500.0,
+            "stok": 150,
+            "kategori": "Minuman",
+            "deskripsi": "Susu UHT segar berkualitas.",
+            "dibuat_pada": "2025-07-01 10:28:01",
+            "diperbarui_pada": "2025-07-01 10:28:01"
+        },
+        "4": {
+            "id": "0ef846c0-533a-44c1-8669-664fd464d682",
+            "nama": "Beras Pandan Wangi 5kg",
+            "harga": 75000.0,
+            "stok": 40,
+            "kategori": "Kebutuhan Pokok",
+            "deskripsi": "Beras premium dengan aroma pandan.",
+            "dibuat_pada": "2025-07-01 10:28:01",
+            "diperbarui_pada": "2025-07-01 10:28:01"
+        },
+        "5": {
+            "id": "ea22192b-c5fb-4e2e-bb01-33df9b75b8e5",
+            "nama": "Apel Fuji per kg",
+            "harga": 35000.0,
+            "stok": 25,
+            "kategori": "Produk Segar",
+            "deskripsi": "Apel segar, manis dan renyah.",
+            "dibuat_pada": "2025-07-01 10:28:01",
+            "diperbarui_pada": "2025-07-01 10:28:01"
+        },
+        "6": {
+            "id": "44f3104f-f70c-4f56-9d6f-906b2e32317f",
+            "nama": "Lampu LED 10W",
+            "harga": 22000.0,
+            "stok": 50,
+            "kategori": "Elektronik Rumah Tangga",
+            "deskripsi": "Lampu hemat energi.",
+            "dibuat_pada": "2025-07-01 10:28:01",
+            "diperbarui_pada": "2025-07-01 10:28:01"
+        }
+    }
+}
