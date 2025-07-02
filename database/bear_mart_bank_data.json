@@ -22,13 +22,15 @@
         "1": {
             "id": "929899df-42c9-41de-a130-889abc4e9f51",
             "username": "admin",
-            "password_hash": "$2b$12$4B.kRnjRUg.rVLausEZLMegrgGtl9jCbOxKrnTWK144yKrQ2Pd8m6",
-            "pin_hash": "$2b$12$nUVbyxKXf4Vh9aXi7Lhf9ODtiAxg4kZaGmIKwbkD1jZ6ANfwDFZPW",
+            "password_hash": "$2b$12$50bpn05EkqKv1WLQ2jzm.en9/myIpzhYXQN4Fa4LXvnhwUy5LAiUi",
+            "pin_hash": "$2b$12$jBYX8x/Wr9G0kCqxadctNO6GPoNkgtN0xWPxv.nwbkUf4qgD333UW",
             "peran": "ADMIN",
             "nama_lengkap": "Administrator Utama",
             "email": "admin@bearmart.system",
-            "saldo_bank": 0.0,
-            "riwayat_transaksi_bank_ids": [],
+            "saldo_bank": 10000000.0,
+            "riwayat_transaksi_bank_ids": [
+                "0b263b0b-11e4-43f5-96a1-7498b81a0ba5"
+            ],
             "riwayat_pesanan_toko_ids": [],
             "gagal_login_count": 0,
             "akun_terkunci_hingga": null,
@@ -42,11 +44,16 @@
             "peran": "PELANGGAN",
             "nama_lengkap": "Silviadewinoviana",
             "email": "silviadewinoviana@gmail.com",
-            "saldo_bank": 0.0,
-            "riwayat_transaksi_bank_ids": [],
+            "saldo_bank": 990000.0,
+            "riwayat_transaksi_bank_ids": [
+                "da4e5a2c-417d-4a6b-8f05-5d5c853ebd92",
+                "683627ef-aed1-4063-b7de-93fceb55242b",
+                "0b263b0b-11e4-43f5-96a1-7498b81a0ba5",
+                "5c568a57-0df5-4862-83cd-51b80c71b80c"
+            ],
             "riwayat_pesanan_toko_ids": [],
-            "gagal_login_count": 4,
-            "akun_terkunci_hingga": "2025-07-01T17:42:03.644115",
+            "gagal_login_count": 0,
+            "akun_terkunci_hingga": null,
             "dibuat_pada": "2025-07-01 17:02:36"
         },
         "3": {
@@ -125,6 +132,52 @@
             "deskripsi": "Lampu hemat energi.",
             "dibuat_pada": "2025-07-01 10:28:01",
             "diperbarui_pada": "2025-07-01 10:28:01"
+        }
+    },
+    "transaksi_bank": {
+        "1": {
+            "id": "da4e5a2c-417d-4a6b-8f05-5d5c853ebd92",
+            "user_id_sumber": "d64915cc-2198-43a6-bd0a-d7b6cfa4b060",
+            "user_id_tujuan": null,
+            "jenis_transaksi": "Deposit",
+            "jumlah": 1000000.0,
+            "keterangan": "Setoran ke akun",
+            "timestamp": "2025-07-02T10:15:12.091583",
+            "saldo_akhir_sumber": 1000000.0,
+            "saldo_akhir_tujuan": null
+        },
+        "2": {
+            "id": "683627ef-aed1-4063-b7de-93fceb55242b",
+            "user_id_sumber": "d64915cc-2198-43a6-bd0a-d7b6cfa4b060",
+            "user_id_tujuan": null,
+            "jenis_transaksi": "Deposit",
+            "jumlah": 10000000.0,
+            "keterangan": "Setoran ke akun",
+            "timestamp": "2025-07-02T10:15:26.979627",
+            "saldo_akhir_sumber": 11000000.0,
+            "saldo_akhir_tujuan": null
+        },
+        "3": {
+            "id": "0b263b0b-11e4-43f5-96a1-7498b81a0ba5",
+            "user_id_sumber": "d64915cc-2198-43a6-bd0a-d7b6cfa4b060",
+            "user_id_tujuan": "929899df-42c9-41de-a130-889abc4e9f51",
+            "jenis_transaksi": "Transfer",
+            "jumlah": 10000000.0,
+            "keterangan": "Transfer ke admin",
+            "timestamp": "2025-07-02T10:16:18.201229",
+            "saldo_akhir_sumber": 1000000.0,
+            "saldo_akhir_tujuan": 10000000.0
+        },
+        "4": {
+            "id": "5c568a57-0df5-4862-83cd-51b80c71b80c",
+            "user_id_sumber": "d64915cc-2198-43a6-bd0a-d7b6cfa4b060",
+            "user_id_tujuan": null,
+            "jenis_transaksi": "Withdraw",
+            "jumlah": 10000.0,
+            "keterangan": "Penarikan dari akun",
+            "timestamp": "2025-07-02T10:17:42.997291",
+            "saldo_akhir_sumber": 990000.0,
+            "saldo_akhir_tujuan": null
         }
     }
 }
