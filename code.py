@@ -74,7 +74,7 @@ KonfigurasiQuery = Query()
 # === SAKLAR MODE PENGEMBANGAN (DEVELOPMENT MODE) ===
 # Atur ke username (misal, "admin") untuk melewati login.
 # Atur ke None untuk menjalankan program secara normal.
-DEVELOPMENT_AUTO_LOGIN_AS = "admin"
+DEVELOPMENT_AUTO_LOGIN_AS = ""
 DEVELOPMENT_TIMEOUT_SECONS = 5
 # =========================================================
 
@@ -427,7 +427,7 @@ def buat_admin_default_jika_perlu(konfigurasi: dict):
     # 1. Cari pengguna berdasarkan username.
     calon_admin = dapatkan_pengguna_by_username(ADMIN_USERNAME_DEFAULT)
     # 2. Periksa apakah pengguna ditemukan DAN perannya adalah ADMIN.
-    if calon_admin and calon_admin.peran == PERAN_ADMIN:
+    if calon_admin and calon_admin.peran == PERAN_ADMIN_UTAMA:
         admin_exists = True
     else:
         admin_exists = False
@@ -2037,15 +2037,17 @@ def menu_bank_pelanggan():
 # ==============================================================================
 # Mengatur alur utama eksekusi program berdasarkan status login dan peran pengguna.
 
+# KODE PERBAIKAN UNTUK jalankan_program()
 def jalankan_program():
     """Fungsi utama untuk menjalankan aplikasi Novi Mart & Bank."""
-    # Memastikan database dan data dasar ada saat program dimulai.
     inisialisasi_database_jika_perlu()
 
     while True:
         if pengguna_login_saat_ini:
             # --- JALUR A: PENGGUNA SUDAH LOGIN ---
+            
             if pengguna_login_saat_ini.peran == PERAN_PELANGGAN:
+                # Logika untuk Pelanggan (Sudah Benar)
                 pilihan = menu_utama_pelanggan()
                 if pilihan == 1: menu_toko_pelanggan()
                 elif pilihan == 2: menu_bank_pelanggan()
@@ -2053,34 +2055,46 @@ def jalankan_program():
                 elif pilihan == 4: logout_pengguna()
 
             elif pengguna_login_saat_ini.peran == PERAN_ADMIN_UTAMA:
-                pilihan = menu_utama_admin()
-                if pilihan == 1: menu_panel_admin()
-                elif pilihan == 2: menu_utama_pelanggan()
-                elif pilihan == 3: logout_pengguna()
+                # --- LOGIKA BARU UNTUK ADMIN UTAMA ---
+                while pengguna_login_saat_ini: # Mulai sub-loop khusus admin
+                    pilihan_gerbang = menu_utama_admin() # Panggil menu gerbang
 
-            elif pengguna_login_saat_ini.peran == PERAN_ADMIN_UTAMA:
-                pilihan = menu_panel_admin()
-                if pilihan == 1: admin_tambah_produk()
-                elif pilihan == 2: admin_ubah_produk()
-                elif pilihan == 3: admin_hapus_produk()
-                elif pilihan == 4: admin_lihat_laporan_penjualan()
-                elif pilihan == 5: admin_kelola_kategori()
-                elif pilihan == 6: admin_lihat_semua_akun_bank()
-                elif pilihan == 7: admin_lihat_semua_transaksi_bank()
-                elif pilihan == 8: admin_kelola_maintenance()
-                elif pilihan == 9: menu_pengaturan_akun()
-                elif pilihan == 10: logout_pengguna()
-        
+                    if pilihan_gerbang == 1:
+                        # --- Masuk ke Mode Panel Admin ---
+                        while True: # Loop untuk panel admin
+                            pilihan_panel = menu_panel_admin()
+                            if pilihan_panel == 1: admin_tambah_produk()
+                            elif pilihan_panel == 2: admin_ubah_produk()
+                            elif pilihan_panel == 3: admin_hapus_produk()
+                            elif pilihan_panel == 4: admin_lihat_laporan_penjualan()
+                            elif pilihan_panel == 5: admin_kelola_kategori()
+                            elif pilihan_panel == 6: admin_lihat_semua_akun_bank()
+                            elif pilihan_panel == 7: admin_lihat_semua_transaksi_bank()
+                            elif pilihan_panel == 8: admin_kelola_maintenance()
+                            elif pilihan_panel == 9: menu_pengaturan_akun()
+                            elif pilihan_panel == 10:
+                                break # Keluar dari loop panel admin, kembali ke menu gerbang
+                        # Setelah break, sub-loop admin akan berputar dan menampilkan menu gerbang lagi.
+
+                    elif pilihan_gerbang == 2:
+                        # --- Masuk ke Mode Pelanggan ---
+                        pilihan_pelanggan = menu_utama_pelanggan()
+                        if pilihan_pelanggan == 1: menu_toko_pelanggan()
+                        elif pilihan_pelanggan == 2: menu_bank_pelanggan()
+                        elif pilihan_pelanggan == 3: menu_pengaturan_akun()
+                        # Opsi logout di sini akan kembali ke menu gerbang admin
+                        elif pilihan_pelanggan == 4: pass 
+
+                    elif pilihan_gerbang == 3:
+                        # Logout dari menu gerbang
+                        logout_pengguna()
+                        # break # Keluar dari sub-loop admin
+            
         else:
-            # --- JALUR B: PENGGUNA BELUM LOGIN---
-            # Semua logika untuk pengguna non-login harus berada DI DALAM blok else ini.
-            
-            pilihan = menu_utama_non_login() # Pertama, panggil menu untuk dapatkan nilai 'pilihan'
-            
-            if pilihan == 1: 
-                login_pengguna()
-            elif pilihan == 2: 
-                registrasi_pengguna_baru()
+            # --- JALUR B: PENGGUNA BELUM LOGIN--- (Sudah Benar)
+            pilihan = menu_utama_non_login()
+            if pilihan == 1: login_pengguna()
+            elif pilihan == 2: registrasi_pengguna_baru()
             elif pilihan == 3:
                 nama_toko = dapatkan_konfigurasi().get("nama_toko", "Novi Mart")
                 bersihkan_layar(); print_header(f"Produk {nama_toko} (Guest Mode)")
@@ -2090,8 +2104,7 @@ def jalankan_program():
                 print("Terima kasih telah menggunakan layanan Novi Mart & Bank. Sampai jumpa!")
                 logger.info("Program dihentikan oleh pengguna.");
                 time.sleep(1); bersihkan_layar()
-                break # Keluar dari loop while True
-            
+                break
 
 
 # ==============================================================================
