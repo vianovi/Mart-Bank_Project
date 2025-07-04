@@ -74,7 +74,7 @@ KonfigurasiQuery = Query()
 # === SAKLAR MODE PENGEMBANGAN (DEVELOPMENT MODE) ===
 # Atur ke username (misal, "admin") untuk melewati login.
 # Atur ke None untuk menjalankan program secara normal.
-DEVELOPMENT_AUTO_LOGIN_AS = ""
+DEVELOPMENT_AUTO_LOGIN_AS = "admin"
 DEVELOPMENT_TIMEOUT_SECONS = 5
 # =========================================================
 
@@ -701,7 +701,7 @@ def print_header(judul: str, panjang_total: int = 70):
 
     # --- Logika Notifikasi Maintenance Real-time untuk Admin ---
     # Cek hanya jika ada pengguna yang login dan perannya adalah ADMIN
-    if pengguna_login_saat_ini and pengguna_login_saat_ini.peran == PERAN_ADMIN:
+    if pengguna_login_saat_ini and pengguna_login_saat_ini.peran == PERAN_ADMIN_UTAMA:
         konfigurasi = dapatkan_konfigurasi()
         
         # Cek jika flag maintenance di konfigurasi aktif
