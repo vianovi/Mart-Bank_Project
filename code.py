@@ -35,7 +35,7 @@ os.makedirs(FOLDER_DATABASE, exist_ok=True)
 os.makedirs(FOLDER_LOG, exist_ok=True)
 
 # Nama file database utama dan log aktivitas
-NAMA_FILE_DATABASE = "Novi_mart_bank_data.json"
+NAMA_FILE_DATABASE = "Bear_mart_bank_data.json"
 NAMA_FILE_LOG = "activity.log"
 
 # Gabungkan path folder dengan nama file
@@ -177,7 +177,7 @@ class PesananToko(BaseModel):
     user_id: str
     items_pesanan: List[ItemKeranjang]
     total_harga: JsonSafeMoney
-    metode_pembayaran: str = "Bank Novi Mart"
+    metode_pembayaran: str = "Bank bear Mart"
     status_pesanan: str = "Selesai"
     timestamp: datetime.datetime = Field(default_factory=datetime.datetime.now)
 
@@ -370,7 +370,7 @@ def dapatkan_konfigurasi() -> dict:
         logger.info(f"System configuration not found. Creating default (ID: {SYSTEM_CONFIG_ID}).")
         default_config = {
             "id": SYSTEM_CONFIG_ID,
-            "nama_toko": "Novi Mart",
+            "nama_toko": "bear Mart",
             "kategori_produk": KATEGORI_PRODUK_DEFAULT.copy(),
             "admin_dibuat": False,
             "setup_selesai": False,
@@ -390,7 +390,7 @@ def dapatkan_konfigurasi() -> dict:
         # Gabungkan data dari DB dengan struktur default untuk memastikan semua field ada.
         merged_config = {
             "id": SYSTEM_CONFIG_ID,
-            "nama_toko": "Novi Mart",
+            "nama_toko": "bear Mart",
             "kategori_produk": KATEGORI_PRODUK_DEFAULT.copy(),
             "admin_dibuat": False,
             "setup_selesai": False,
@@ -443,7 +443,7 @@ def buat_admin_default_jika_perlu(konfigurasi: dict):
                 pin_hash=admin_pin_hash,
                 peran=PERAN_ADMIN_UTAMA,
                 nama_lengkap="Administrator Utama",
-                email="admin@Novimart.system",
+                email="admin@bearmart.system",
                 saldo_bank=Money(0, IDR)
             )
             simpan_pengguna(admin_baru)
@@ -750,7 +750,7 @@ def registrasi_pengguna_baru():
     if cek_maintenance_dan_tampilkan_pesan():
         return  #---> Langsung keluar dari fungsi, batalkan registrasi
     # <<<<---------->>>>
-    bersihkan_layar(); print_header("Registrasi Akun Baru Novi Mart & Bank")
+    bersihkan_layar(); print_header("Registrasi Akun Baru bear Mart & Bank")
 
     username = input_valid("Username baru (3-20 karakter, alfanumerik & underscore): ",
                         validasi_regex=r"^[a-zA-Z0-9_]{3,20}$",
@@ -801,7 +801,7 @@ def registrasi_pengguna_baru():
 def login_pengguna():
     """Memproses login pengguna, verifikasi kredensial, dan cek status kunci akun."""
     global pengguna_login_saat_ini
-    bersihkan_layar(); print_header("Login Novi Mart & Bank")
+    bersihkan_layar(); print_header("Login bear Mart & Bank")
 
     username = input_valid("Username: ")
     password = input_valid("Password: ", sembunyikan_input=True)
@@ -1307,7 +1307,7 @@ def ubah_item_keranjang_toko():
 def proses_pembayaran_toko():
     """Memproses pembayaran pesanan di keranjang menggunakan saldo bank."""
     global keranjang_belanja_global, pengguna_login_saat_ini
-    bersihkan_layar(); print_header("Proses Pembayaran Novi Mart")
+    bersihkan_layar(); print_header("Proses Pembayaran bear Mart")
 
     if not keranjang_belanja_global.items:
         print("Keranjang belanja kosong."); input_enter_lanjut(); return
@@ -1362,7 +1362,7 @@ def proses_pembayaran_toko():
             user_id_sumber=pengguna_login_saat_ini.id,
             jenis_transaksi="Pembayaran Toko",
             jumlah=total_bayar,
-            keterangan="Pembelian di Novi Mart",
+            keterangan="Pembelian di bear Mart",
             saldo_akhir_sumber=pengguna_login_saat_ini.saldo_bank
         )
         pesanan_baru = PesananToko(
@@ -1384,7 +1384,7 @@ def proses_pembayaran_toko():
         keranjang_belanja_global.kosongkan_keranjang()
         logger.info(f"User '{pengguna_login_saat_ini.username}' bayar {format_rupiah(total_bayar)}. Saldo: {format_rupiah(saldo_awal_pengguna)} -> {format_rupiah(pengguna_login_saat_ini.saldo_bank)}. Pesanan ID: {pesanan_baru.id}")
 
-        print("\n--- Struk Pembayaran Novi Mart ---")
+        print("\n--- Struk Pembayaran bear Mart ---")
         print(f"ID Pesanan: {pesanan_baru.id}")
         print(f"Tanggal: {pesanan_baru.timestamp.strftime('%Y-%m-%d %H:%M:%S')}")
         print(f"Total: {format_rupiah(total_bayar)}")
@@ -1903,7 +1903,7 @@ def menu_pengaturan_akun():
 
 def menu_utama_non_login():
     """Menampilkan menu utama saat tidak ada pengguna yang login."""
-    nama_toko = dapatkan_konfigurasi().get("nama_toko", "Novi Mart")
+    nama_toko = dapatkan_konfigurasi().get("nama_toko", "bear Mart")
     bersihkan_layar(); print_header(f"Selamat Datang di {nama_toko} & Bank")
 
     # --- TAMBAHKAN LOGIKA NOTIFIKASI INI ---
@@ -1935,12 +1935,12 @@ def menu_utama_non_login():
 
 def menu_utama_pelanggan():
     """Menampilkan menu utama untuk pengguna dengan peran PELANGGAN."""
-    nama_toko = dapatkan_konfigurasi().get("nama_toko", "Novi Mart")
+    nama_toko = dapatkan_konfigurasi().get("nama_toko", "bear Mart")
     bersihkan_layar(); print_header(f"Menu Utama - {pengguna_login_saat_ini.username}")
     print(f"Saldo Bank Anda: {format_rupiah(pengguna_login_saat_ini.saldo_bank)}")
     print_separator_line()
     print(f"1. {nama_toko} (Modul Toko)")
-    print("2. Novi Bank (Modul Perbankan)")
+    print("2. bear Bank (Modul Perbankan)")
     print("3. Pengaturan Akun")
     print("4. Logout")
     print_separator_line()
@@ -1982,9 +1982,9 @@ def menu_panel_admin():
 
 
 def menu_toko_pelanggan():
-    """Menampilkan menu spesifik untuk modul Toko Novi Mart."""
+    """Menampilkan menu spesifik untuk modul Toko bear Mart."""
     while True:
-        nama_toko = dapatkan_konfigurasi().get("nama_toko", "Novi Mart")
+        nama_toko = dapatkan_konfigurasi().get("nama_toko", "bear Mart")
         bersihkan_layar(); print_header(f"{nama_toko} - Modul Toko")
         print(f"Keranjang Belanja: {len(keranjang_belanja_global.items)} item | Total: {format_rupiah(keranjang_belanja_global.total_belanja)}")
         print_separator_line()
@@ -2005,9 +2005,9 @@ def menu_toko_pelanggan():
 
 
 def menu_bank_pelanggan():
-    """Menampilkan menu spesifik untuk modul Bank Novi Mart."""
+    """Menampilkan menu spesifik untuk modul Bank bear Mart."""
     while True:
-        bersihkan_layar(); print_header("Novi Bank - Modul Perbankan")
+        bersihkan_layar(); print_header("bear Bank - Modul Perbankan")
         if pengguna_login_saat_ini:
             print(f"Saldo Anda Saat Ini: {format_rupiah(pengguna_login_saat_ini.saldo_bank)}")
         else:
@@ -2039,7 +2039,7 @@ def menu_bank_pelanggan():
 
 # KODE PERBAIKAN UNTUK jalankan_program()
 def jalankan_program():
-    """Fungsi utama untuk menjalankan aplikasi Novi Mart & Bank."""
+    """Fungsi utama untuk menjalankan aplikasi bear Mart & Bank."""
     inisialisasi_database_jika_perlu()
 
     while True:
@@ -2096,12 +2096,12 @@ def jalankan_program():
             if pilihan == 1: login_pengguna()
             elif pilihan == 2: registrasi_pengguna_baru()
             elif pilihan == 3:
-                nama_toko = dapatkan_konfigurasi().get("nama_toko", "Novi Mart")
+                nama_toko = dapatkan_konfigurasi().get("nama_toko", "bear Mart")
                 bersihkan_layar(); print_header(f"Produk {nama_toko} (Guest Mode)")
                 tampilkan_daftar_produk_toko(tampilkan_deskripsi=True)
                 print("\nSilakan login atau registrasi untuk berbelanja."); input_enter_lanjut()
             elif pilihan == 4:
-                print("Terima kasih telah menggunakan layanan Novi Mart & Bank. Sampai jumpa!")
+                print("Terima kasih telah menggunakan layanan bear Mart & Bank. Sampai jumpa!")
                 logger.info("Program dihentikan oleh pengguna.");
                 time.sleep(1); bersihkan_layar()
                 break
@@ -2156,4 +2156,4 @@ if __name__ == "__main__":
         import traceback
         logger.error(f"Traceback lengkap:\n{traceback.format_exc()}")
     finally:
-        logger.info("=== Program Novi Mart & Bank (Powerfull Version) selesai ===")
+        logger.info("=== Program bear Mart & Bank (Powerfull Version) selesai ===")
