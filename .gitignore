@@ -40,3 +40,8 @@ __pycache__/
 .DS_Store
 Thumbs.db
 
+# ===============================
+# DARA BASE DAN LOGS ACTIVITY
+# ===============================
+database/
+logs/

@@ -70,12 +70,20 @@ KonfigurasiQuery = Query()
 
 # --- Konstanta & Konfigurasi Lainnya ---
 
+# =========================================================
+# === SAKLAR MODE PENGEMBANGAN (DEVELOPMENT MODE) ===
+# Atur ke username (misal, "admin") untuk melewati login.
+# Atur ke None untuk menjalankan program secara normal.
+DEVELOPMENT_AUTO_LOGIN_AS = "admin"
+DEVELOPMENT_TIMEOUT_SECONS = 5
+# =========================================================
 
 PERAN_PELANGGAN = "PELANGGAN"
 PERAN_ADMIN = "ADMIN"
+PERAN_ADMIN_UTAMA = "ADMIN_UTAMA"
 
 ADMIN_USERNAME_DEFAULT = "admin"
-ADMIN_PASSWORD_DEFAULT = "AdminBearMart123!"
+ADMIN_PASSWORD_DEFAULT = "Adminpinter123!"
 ADMIN_PIN_DEFAULT = "123456"
 
 BATAS_PERCOBAAN_LOGIN = 3
@@ -433,7 +441,7 @@ def buat_admin_default_jika_perlu(konfigurasi: dict):
                 username=ADMIN_USERNAME_DEFAULT,
                 password_hash=admin_password_hash,
                 pin_hash=admin_pin_hash,
-                peran=PERAN_ADMIN,
+                peran=PERAN_ADMIN_UTAMA,
                 nama_lengkap="Administrator Utama",
                 email="admin@bearmart.system",
                 saldo_bank=Money(0, IDR)
@@ -501,6 +509,80 @@ def inisialisasi_database_jika_perlu():
 # === BLOK 5: FUNGSI UTILITAS UMUM ===
 # ==============================================================================
 # Fungsi-fungsi bantu umum yang digunakan di seluruh program.
+
+def countdown_with_cancel(duration: int, prompt_message: str) -> bool:
+    """
+    Menampilkan hitung mundur (countdown) dan menunggu input pembatalan ('n') secara non-blocking.
+
+    Args:
+        duration (int): Durasi hitung mundur dalam detik.
+        prompt_message (str): Pesan yang ditampilkan di atas countdown.
+
+    Returns:
+        bool: True jika countdown selesai, False jika dibatalkan oleh pengguna.
+    """
+    
+    print(prompt_message)
+    print("Tekan (n) untuk membatalkan...")
+
+    # --- Logika untuk Windows ---
+    if os.name == 'nt':
+        import msvcrt
+        for i in range(duration, 0, -1):
+            # \r (carriage return) akan memindahkan kursor ke awal baris
+            # end='' mencegah print membuat baris baru
+            print(f"\rMelanjutkan otomatis dalam {i} detik...  ", end='')
+            
+            # Cek input selama 1 detik tanpa memblokir total
+            start_time = time.time()
+            while time.time() - start_time < 1:
+                if msvcrt.kbhit(): # Apakah ada tombol yang ditekan?
+                    char = msvcrt.getch().decode(errors='ignore').lower()
+                    if char == 'n':
+                        print("\n\nAuto-login dibatalkan oleh pengguna.")
+                        return False # Dibatalkan
+                time.sleep(0.1) # Jeda singkat agar CPU tidak bekerja terlalu keras
+
+        print("\rMelanjutkan proses auto-login...             ") # Timpa pesan countdown terakhir
+        return True # Selesai tanpa pembatalan
+
+    # --- Logika untuk Linux/macOS ---
+    elif os.name == 'posix':
+        import tty
+        import termios
+        import select
+
+        old_settings = termios.tcgetattr(sys.stdin)
+        try:
+            tty.setcbreak(sys.stdin.fileno()) # Ubah mode terminal
+            for i in range(duration, 0, -1):
+                print(f"\rMelanjutkan otomatis dalam {i} detik...  ", end='')
+                sys.stdout.flush() # Pastikan pesan langsung tampil
+                
+                # Menunggu input selama 1 detik
+                # Jika ada input, r akan berisi [sys.stdin]
+                r, _, _ = select.select([sys.stdin], [], [], 1)
+                
+                if r:
+                    char = sys.stdin.read(1).lower()
+                    if char == 'n':
+                        print("\n\nAuto-login dibatalkan oleh pengguna.")
+                        return False # Dibatalkan
+
+            print("\rMelanjutkan proses auto-login...             ")
+            return True # Selesai tanpa pembatalan
+        finally:
+            # SANGAT PENTING: Kembalikan terminal ke pengaturan semula
+            termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_settings)
+
+    # --- Logika Fallback (Cadangan) untuk OS lain ---
+    else:
+        print("Pembatalan interaktif tidak didukung di OS ini.")
+        for i in range(duration, 0, -1):
+            print(f"\rMelanjutkan otomatis dalam {i} detik...  ", end='')
+            time.sleep(1)
+        print("\rMelanjutkan proses auto-login...             ")
+        return True
 
 def bersihkan_layar():
     """Membersihkan layar konsol."""
@@ -642,7 +724,6 @@ def print_header(judul: str, panjang_total: int = 70):
                     # Jika format tanggal di DB salah, abaikan saja notifikasi
                     pass 
     # --------------------------------------------------------
-
     print("=" * panjang_total)
 
 def print_separator_line(panjang: int = 70, char: str = "-"):
@@ -771,6 +852,7 @@ def login_pengguna():
 
 def logout_pengguna():
     """Memproses logout pengguna yang sedang login."""
+    print_separator_line()
     global pengguna_login_saat_ini, keranjang_belanja_global
 
     if pengguna_login_saat_ini:
@@ -780,7 +862,7 @@ def logout_pengguna():
         keranjang_belanja_global.kosongkan_keranjang()
     else:
         print("Tidak ada pengguna yang sedang login.")
-
+    print_separator_line()
     input_enter_lanjut()
 
 
@@ -1866,6 +1948,19 @@ def menu_utama_pelanggan():
 
 
 def menu_utama_admin():
+    """Menampilkan menu 'gerbang' utama untuk admin."""
+    bersihkan_layar(); print_header(f"Gerbang Panel untuk admin - {pengguna_login_saat_ini.username}")
+    print(f"Saldo Akun Anda= {format_rupiah(pengguna_login_saat_ini.saldo_bank)}")
+    print_separator_line()
+    print("-> Anda login sebagai Admin - Pilih Mode yang ingin di akses:")
+    print("1. Akses Panel Admin (Manajemen Sistem)")
+    print("2. Akses Menu Pelanggan (Toko & Bank)")
+    print_separator_line()
+    print("3. Logout")
+    print_separator_line()
+    return input_pilihan_menu(3)
+
+def menu_panel_admin():
     """Menampilkan menu utama (Panel Admin) untuk pengguna dengan peran ADMIN."""
     bersihkan_layar(); print_header(f"Panel Admin - {pengguna_login_saat_ini.username}")
     print("--- Manajemen Toko ---")
@@ -1881,7 +1976,7 @@ def menu_utama_admin():
     print("8. Kelola Mode Maintenance")
     print("9. Pengaturan Akun Admin")
     print_separator_line()
-    print("10. Logout")
+    print("10. Kembali")
     print_separator_line()
     return input_pilihan_menu(10)
 
@@ -1957,8 +2052,14 @@ def jalankan_program():
                 elif pilihan == 3: menu_pengaturan_akun()
                 elif pilihan == 4: logout_pengguna()
 
-            elif pengguna_login_saat_ini.peran == PERAN_ADMIN:
+            elif pengguna_login_saat_ini.peran == PERAN_ADMIN_UTAMA:
                 pilihan = menu_utama_admin()
+                if pilihan == 1: menu_panel_admin()
+                elif pilihan == 2: menu_utama_pelanggan()
+                elif pilihan == 3: logout_pengguna()
+
+            elif pengguna_login_saat_ini.peran == PERAN_ADMIN_UTAMA:
+                pilihan = menu_panel_admin()
                 if pilihan == 1: admin_tambah_produk()
                 elif pilihan == 2: admin_ubah_produk()
                 elif pilihan == 3: admin_hapus_produk()
@@ -1999,7 +2100,38 @@ def jalankan_program():
 # Titik masuk utama program saat file skrip dijalankan.
 
 if __name__ == "__main__":
-    logger.info("=== Program Bear Mart & Bank (Powerfull Version) dimulai ===")
+    # --- LOGIKA AUTO-LOGIN UNTUK DEVELOPMENT MODE ---
+    if DEVELOPMENT_AUTO_LOGIN_AS:
+        # Siapkan pesan yang akan ditampilkan di atas countdown
+        prompt_pesan = (
+            f"\n{'='*70}\n"
+            f"{'!!! WARNING: DEVELOPMENT MODE IS ACTIVE !!!'.center(70)}\n"
+            f"{f'--- Akan auto-login sebagai: \'{DEVELOPMENT_AUTO_LOGIN_AS}\' ---'.center(70)}\n"
+            f"{'='*70}"
+        )
+        
+        # Panggil fungsi helper kita dengan durasi dari konstanta
+        # dan periksa hasilnya (True jika lanjut, False jika batal)
+        if countdown_with_cancel(DEVELOPMENT_TIMEOUT_SECONS, prompt_pesan):
+            # Jika countdown selesai (tidak dibatalkan), maka lanjutkan proses login
+            user_to_login = dapatkan_pengguna_by_username(DEVELOPMENT_AUTO_LOGIN_AS)
+
+            if user_to_login:
+                pengguna_login_saat_ini = user_to_login
+                logger.info(f"[DEV MODE] Auto-login berhasil sebagai '{DEVELOPMENT_AUTO_LOGIN_AS}'.")
+                # Bersihkan layar setelah login berhasil untuk tampilan yang rapi
+                time.sleep(1)
+                bersihkan_layar() 
+            else:
+                logger.warning(f"[DEV MODE] Gagal auto-login: Pengguna '{DEVELOPMENT_AUTO_LOGIN_AS}' tidak ditemukan.")
+                print(f"Pengguna '{DEVELOPMENT_AUTO_LOGIN_AS}' tidak ditemukan. Memulai program secara normal.")
+                input_enter_lanjut()
+        else:
+            # Jika dibatalkan (fungsi mengembalikan False), catat di log dan mulai normal
+            logger.info("[DEV MODE] Auto-login dibatalkan oleh pengguna. Memulai program secara normal.")
+            # Tidak perlu melakukan apa-apa lagi, program akan lanjut ke `try...except` di bawah
+    # -----------------------------------------------
+
     try:
         jalankan_program()
     except KeyboardInterrupt:
