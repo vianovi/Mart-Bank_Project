@@ -27,8 +27,8 @@ from moneyed import Money, IDR # Mengimpor kelas Money dan mata uang IDR (Rupiah
 
 
 # --- Konfigurasi Path Folder & File ---
-FOLDER_DATABASE = "/home/vivobook14/Source_code/Repository/Mart_Bank_Project/database"
-FOLDER_LOG = "/home/vivobook14/Source_code/Repository/Mart_Bank_Project/logs"
+FOLDER_DATABASE = "/home/silinux/Documents/MyPlaygraund/Repository/Mart-Bank_Project/database"
+FOLDER_LOG = "/home/silinux/Documents/MyPlaygraund/Repository/Mart-Bank_Project/logs"
 
 # Pastikan folder penyimpanan ada; dibuat jika belum ada
 os.makedirs(FOLDER_DATABASE, exist_ok=True)
@@ -47,7 +47,7 @@ PATH_LOG = os.path.join(FOLDER_LOG, NAMA_FILE_LOG)
 logger.remove()
 logger.add(
     PATH_LOG,
-    rotation="5 MB",      # Rotasi file log saat ukuran mencapai 5 MB
+    rotation="3 MB",      # Rotasi file log saat ukuran mencapai 3 MB
     retention="10 days",  # Hanya menyimpan log dari 10 hari terakhir
     level="INFO",         # Level log minimum yang akan dicatat
     format="{time:YYYY-MM-DD HH:mm:ss} - {message}", # Format output log
@@ -476,7 +476,7 @@ def inisialisasi_database_jika_perlu():
     # DIUBAH: Menggunakan len(db.table('produk')) untuk efisiensi
     if len(db.table('produk')) == 0:
         logger.info("Menambahkan produk default dari konstanta global.")
-        
+
         # DIUBAH: Tidak ada lagi definisi list di sini.
         # Loop sekarang menggunakan konstanta global 'PRODUK_DEFAULT'.
         for p_data in PRODUK_DEFAULT:
@@ -521,7 +521,7 @@ def countdown_with_cancel(duration: int, prompt_message: str) -> bool:
     Returns:
         bool: True jika countdown selesai, False jika dibatalkan oleh pengguna.
     """
-    
+
     print(prompt_message)
     print("Tekan (n) untuk membatalkan...")
 
@@ -532,7 +532,7 @@ def countdown_with_cancel(duration: int, prompt_message: str) -> bool:
             # \r (carriage return) akan memindahkan kursor ke awal baris
             # end='' mencegah print membuat baris baru
             print(f"\rMelanjutkan otomatis dalam {i} detik...  ", end='')
-            
+
             # Cek input selama 1 detik tanpa memblokir total
             start_time = time.time()
             while time.time() - start_time < 1:
@@ -558,11 +558,11 @@ def countdown_with_cancel(duration: int, prompt_message: str) -> bool:
             for i in range(duration, 0, -1):
                 print(f"\rMelanjutkan otomatis dalam {i} detik...  ", end='')
                 sys.stdout.flush() # Pastikan pesan langsung tampil
-                
+
                 # Menunggu input selama 1 detik
                 # Jika ada input, r akan berisi [sys.stdin]
                 r, _, _ = select.select([sys.stdin], [], [], 1)
-                
+
                 if r:
                     char = sys.stdin.read(1).lower()
                     if char == 'n':
@@ -703,7 +703,7 @@ def print_header(judul: str, panjang_total: int = 70):
     # Cek hanya jika ada pengguna yang login dan perannya adalah ADMIN
     if pengguna_login_saat_ini and pengguna_login_saat_ini.peran == PERAN_ADMIN_UTAMA:
         konfigurasi = dapatkan_konfigurasi()
-        
+
         # Cek jika flag maintenance di konfigurasi aktif
         if konfigurasi.get("maintenance_aktif", False):
             berakhir_str = konfigurasi.get("maintenance_berakhir_pada")
@@ -711,18 +711,18 @@ def print_header(judul: str, panjang_total: int = 70):
                 try:
                     berakhir_dt = datetime.datetime.strptime(berakhir_str, '%Y-%m-%d %H:%M:%S')
                     sisa_waktu = berakhir_dt - datetime.datetime.now()
-                    
+
                     # Hanya tampilkan notifikasi jika waktu maintenance belum habis
                     if sisa_waktu.total_seconds() > 0:
                         # Hitung sisa menit, bulatkan ke atas agar lebih intuitif
-                        menit_sisa = int(sisa_waktu.total_seconds() // 60) + 1 
-                        
+                        menit_sisa = int(sisa_waktu.total_seconds() // 60) + 1
+
                         pesan_notif = f"MAINTENANCE AKTIF (Berakhir dalam ~{menit_sisa} menit)"
                         print(pesan_notif.center(panjang_total))
-                        
+
                 except ValueError:
                     # Jika format tanggal di DB salah, abaikan saja notifikasi
-                    pass 
+                    pass
     # --------------------------------------------------------
     print("=" * panjang_total)
 
@@ -820,7 +820,7 @@ def login_pengguna():
             print(f"Akun terkunci. Silakan coba lagi dalam {sisa_waktu_str}.")
             logger.warning(f"Percobaan login ke akun terkunci: {username}")
             input_enter_lanjut(); return
-        
+
                 # Verifikasi password menggunakan Passlib, dengan membungkam stderr
         with sembunyikan_stderr():
             verifikasi_berhasil = pengguna.verifikasi_password(password)
@@ -1755,7 +1755,7 @@ def admin_kelola_maintenance():
         maintenance_aktif = False # Perbarui status lokal untuk sisa fungsi
         input_enter_lanjut()
         # Panggil fungsi lagi agar menampilkan status yang benar setelah dinonaktifkan
-        admin_kelola_maintenance() 
+        admin_kelola_maintenance()
         return
 
     # --- Logika Utama ---
@@ -1764,7 +1764,7 @@ def admin_kelola_maintenance():
         print("Status Sistem: MODE MAINTENANCE AKTIF")
         print(f"Akses non-admin akan dibatasi hingga: {berakhir_pada_dt.strftime('%Y-%m-%d %H:%M:%S')}")
         print_separator_line()
-        
+
         if input_valid("Nonaktifkan mode maintenance sekarang? (y/n): ", default_value='n').lower() == 'y':
             konfigurasi["maintenance_aktif"] = False
             konfigurasi["maintenance_berakhir_pada"] = None
@@ -1787,11 +1787,11 @@ def admin_kelola_maintenance():
                     print("Durasi harus lebih dari 0 menit.")
                 else:
                     waktu_berakhir = datetime.datetime.now() + datetime.timedelta(minutes=durasi_menit)
-                    
+
                     konfigurasi["maintenance_aktif"] = True
                     # Kita simpan dalam format string yang sudah kita tentukan
                     konfigurasi["maintenance_berakhir_pada"] = waktu_berakhir.strftime('%Y-%m-%d %H:%M:%S')
-                    
+
                     simpan_konfigurasi(konfigurasi)
                     logger.info(f"ADMIN: Mode maintenance DIAKTIFKAN oleh {pengguna_login_saat_ini.username} selama {durasi_menit} menit.")
                     print(f"\nMode maintenance berhasil diaktifkan selama {durasi_menit} menit.")
@@ -1801,7 +1801,7 @@ def admin_kelola_maintenance():
                 print("Input durasi tidak valid. Harap masukkan angka.")
         else:
             print("\nTidak ada perubahan. Sistem tetap dalam mode normal.")
-            
+
     input_enter_lanjut()
 
 # ==============================================================================
@@ -1923,7 +1923,7 @@ def menu_utama_non_login():
             except ValueError:
                 pass # Abaikan jika format tanggal salah
     # ----------------------------------------
-    
+
     print("\nStatus: Belum Login")
     print("1. Login")
     print("2. Registrasi Akun Baru")
@@ -2045,7 +2045,7 @@ def jalankan_program():
     while True:
         if pengguna_login_saat_ini:
             # --- JALUR A: PENGGUNA SUDAH LOGIN ---
-            
+
             if pengguna_login_saat_ini.peran == PERAN_PELANGGAN:
                 # Logika untuk Pelanggan (Sudah Benar)
                 pilihan = menu_utama_pelanggan()
@@ -2083,13 +2083,13 @@ def jalankan_program():
                         elif pilihan_pelanggan == 2: menu_bank_pelanggan()
                         elif pilihan_pelanggan == 3: menu_pengaturan_akun()
                         # Opsi logout di sini akan kembali ke menu gerbang admin
-                        elif pilihan_pelanggan == 4: pass 
+                        elif pilihan_pelanggan == 4: pass
 
                     elif pilihan_gerbang == 3:
                         # Logout dari menu gerbang
                         logout_pengguna()
                         # break # Keluar dari sub-loop admin
-            
+
         else:
             # --- JALUR B: PENGGUNA BELUM LOGIN--- (Sudah Benar)
             pilihan = menu_utama_non_login()
@@ -2122,7 +2122,7 @@ if __name__ == "__main__":
             f"{f'--- Akan auto-login sebagai: \'{DEVELOPMENT_AUTO_LOGIN_AS}\' ---'.center(70)}\n"
             f"{'='*70}"
         )
-        
+
         # Panggil fungsi helper kita dengan durasi dari konstanta
         # dan periksa hasilnya (True jika lanjut, False jika batal)
         if countdown_with_cancel(DEVELOPMENT_TIMEOUT_SECONS, prompt_pesan):
@@ -2134,7 +2134,7 @@ if __name__ == "__main__":
                 logger.info(f"[DEV MODE] Auto-login berhasil sebagai '{DEVELOPMENT_AUTO_LOGIN_AS}'.")
                 # Bersihkan layar setelah login berhasil untuk tampilan yang rapi
                 time.sleep(1)
-                bersihkan_layar() 
+                bersihkan_layar()
             else:
                 logger.warning(f"[DEV MODE] Gagal auto-login: Pengguna '{DEVELOPMENT_AUTO_LOGIN_AS}' tidak ditemukan.")
                 print(f"Pengguna '{DEVELOPMENT_AUTO_LOGIN_AS}' tidak ditemukan. Memulai program secara normal.")
